@@ -1,5 +1,5 @@
 const express         = require('express');            // create express app
-const bodyParser      = require('body-parser');        // enable read body data
+const bodyParser      = require('body-parser');        // parsing body of HTTP requests
 const cors            = require('cors');               // enable cross-origin resource sharing (cors)
 const path            = require('path');
 const passport        = require('passport');
@@ -12,7 +12,7 @@ const { MongoClient } = require('mongodb');            // import MongoDB module
 const ObjectId        = require('mongodb').ObjectID;   // Import ObjectID constructor
 const mongo           = require('./db-config');
 const app             = express();
-const port            = 5000;
+const port            = 5000;                          // default server port
 require('dotenv').config(); // allow access to .env variables
 
 // Connect to db
@@ -38,26 +38,24 @@ app.use(express.urlencoded({ extended: true }));
 let db;
 app.listen(process.env.PORT || port, async () => {
   db = await connect();
-  console.log(`--Server running on port: ${port}`);
+  console.log(`Server running on port: ${port}`);
 });
 
-// object literal containing options to control how the token is extracted from the request or verified
+// options to control how token is extracted from request or verified
 const opts = {
   jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
   secretOrKey: process.env.JWT_KEY,
 };
-
 // passport use JwtStrategy to extract token from header and sends user associated with token
 passport.use(new JwtStrategy(opts, function(payload, done) {
-  db.collection('User').findOne({ username : payload.username }).then((user, err) => {
-    if (err) {
-      return done(err, false);
-    }
+  db.collection('Artisan').findOne({ username : payload.username }).then((user, err) => {
+    if (err) done(err, false);
     if (user) {
       return done(null, user);
     } else {
-      res.status(401).json({ error: 'User token does not correspond to' })
-      return done(null, false);
+      res.json({success: false, error: {code: '401', msg: 'Invalid token.'}});
+      // res.status(401).json({ error: 'Invalid token.' })
+      // return done(null, false);
     }
   });
 }));
