@@ -1,11 +1,10 @@
 const express         = require('express');            // create express app
 const bodyParser      = require('body-parser');        // parsing body of HTTP requests
 const cors            = require('cors');               // enable cross-origin resource sharing (cors)
-const path            = require('path');
+// const path            = require('path');
 const passport        = require('passport');
 const bcrypt          = require('bcrypt');
 const jwt             = require('jsonwebtoken');       // allows us to sign token and verify
-const AccessToken     = twilio.jwt.AccessToken;
 const JwtStrategy     = require('passport-jwt').Strategy;
 const ExtractJwt      = require('passport-jwt').ExtractJwt;
 const { MongoClient } = require('mongodb');            // import MongoDB module
@@ -32,7 +31,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
-// app.use(express.static(path.join(__dirname, './../final-project/build')));
+// app.use(express.static(path.join(__dirname, './../client/build')));
 
 // Start server
 let db;
@@ -46,21 +45,143 @@ const opts = {
   jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
   secretOrKey: process.env.JWT_KEY,
 };
+
 // passport use JwtStrategy to extract token from header and sends user associated with token
 passport.use(new JwtStrategy(opts, function(payload, done) {
-  db.collection('Artisan').findOne({ username : payload.username }).then((user, err) => {
+  db.collection('Artisan').findOne({ _id : payload.sub }).then((user, err) => {
     if (err) done(err, false);
     if (user) {
       return done(null, user);
     } else {
       res.json({success: false, error: {code: '401', msg: 'Invalid token.'}});
       // res.status(401).json({ error: 'Invalid token.' })
-      // return done(null, false);
+      return done(null, false);
     }
   });
 }));
 
 app.use(passport.initialize());
+
+/** ---------------------
+ * AUTHENTICATION ROUTES 
+ * ------------------ 
+ */
+// New user registration endpoint
+app.post('/register', async (req, res) => {
+  const { username, password, email, birth_month, birth_day, birth_year } = req.body;
+
+  // error if all inputs not included
+  if (!username || !password || !email || !birth_month || !birth_day || !birth_year) {
+    res.json({success: false, error: {code: '400', msg: 'Request malformed: Please include all fields.' }});
+    return;
+  }
+
+  // error if user or email already in use
+  const emailExists = await db.collection('Artisan').findOne({ email: email });
+  const userExists = await db.collection('Artisan').findOne({ username: username });
+  if (emailExists || userExists) {
+    res.json({success: false, error: {code: '409', msg: 'Conflict: Username or email already exists!'}});
+    return;
+  }
+  
+  // error if password does not satisfy security requirements
+  if (!password.match(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,20}$/)) {
+    res.json({success: false, error: {code: '400', msg: 'Password format invalid.'}});
+    return;
+  }
+
+  // error if birthdate invalid
+  const birthDate = new Date(`${birth_month} ${birth_day} ${birth_year}`);
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  if (birthDate.toString() === 'Invalid Date' || monthNames[birthDate.getMonth()] !== birth_month) {
+    res.json({success: false, error: {code: '400', msg: 'Birthday is not a valid date.'}});
+    return;
+  }
+
+  // auto-gen a salt and hash
+  bcrypt.hash(password, 10, async (err, hashPass) => {
+    if (err) return next(err);
+
+    // create new user
+    const user = {
+      username: username,
+      password: hashPass,
+      email: email,
+      date_of_birth: birthDate,
+      registration_date: new Date(),
+      pfp_url: 'http://farmersca.com/wp-content/uploads/2016/07/default-profile.png',
+      cover_url: '',
+      bio: '',
+      title: '',
+      views: 0,
+      reputation: 0,
+      online: false,
+      private: false,
+      hidden: false,
+      deactivated: false,
+      featured: [],
+      following: [],
+      followers: [],
+      blocked_users: [],
+      hidden_posts: [],
+      communities: [],
+      favorites: [], 
+      failed_attempts: 0,
+      locked_until: new Date(),
+    };
+
+    // save user to database
+    db.collection('Artisan').insertOne(user).then(() => 
+      res.json({ success: true, user: user })
+    ).catch((err) => 
+      res.json({ success: false, error: { code: '400', msg: 'Error creating new user.' } })
+    );
+  });
+});
+
+// User login endpoint
+app.post('/login', async (req, res) => {
+  const { username, password } = req.body;
+  // error if all fields not provided
+  if (!username || !password) {    
+    res.json({ success: false, error: { code: '400', msg: 'Username and password field required.' }});
+    return;
+  }
+
+  try {
+    // error 404 if username not found in database
+    const user = await db.collection('Artisan').findOne({ username: username });
+    if (!user) {
+      res.json({ success: false, error: { code: '404', msg: 'Username with specified username does not exist.' }});
+      return;
+    }
+
+    // compare passwords
+    const matches = await bcrypt.compare(password, user.password);
+    if (matches) {
+      let token = jwt.sign({ 
+        sub: user._id,
+      }, process.env.JWT_KEY, {expiresIn: '3 hours'});
+
+      // user is no longer deactivated upon login
+      if (user.deactivated) {
+        await db.collection('Artisan').updateOne({ username: username }, { $set: { deactivated: false } });
+      }
+
+      // return user token
+      res.status(200).json({ success: true, token: token });
+      return;
+
+    } else {
+      // status 401 if password does not match
+      res.json({ success: false, error: { code: '401', msg: 'Invalid password.' }});
+      return;
+    }
+  } catch (err) {
+    res.json({ success: false, error: {code: '400', msg: 'Error.' }});
+    return;
+  }
+});
 
 // Root endpoint
 // app.get('*', (req, res) => {
