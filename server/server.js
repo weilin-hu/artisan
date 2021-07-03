@@ -9,6 +9,10 @@ const JwtStrategy     = require('passport-jwt').Strategy;
 const ExtractJwt      = require('passport-jwt').ExtractJwt;
 const { MongoClient } = require('mongodb');            // import MongoDB module
 const ObjectId        = require('mongodb').ObjectID;   // Import ObjectID constructor
+
+const crypto          = require('crypto');
+const sendmail        = require('sendmail')();
+
 const mongo           = require('./db-config');
 const app             = express();
 const port            = 5000;                          // default server port
@@ -48,7 +52,7 @@ const opts = {
 
 // passport use JwtStrategy to extract token from header and sends user associated with token
 passport.use(new JwtStrategy(opts, function(payload, done) {
-  db.collection('Artisan').findOne({ _id : payload.sub }).then((user, err) => {
+  db.collection('Artisan').findOne({ _id : payload.id }).then((user, err) => {
     if (err) done(err, false);
     if (user) {
       return done(null, user);
@@ -160,7 +164,7 @@ app.post('/login', async (req, res) => {
     const matches = await bcrypt.compare(password, user.password);
     if (matches) {
       let token = jwt.sign({ 
-        sub: user._id,
+        id: user._id,
       }, process.env.JWT_KEY, {expiresIn: '3 hours'});
 
       // user is no longer deactivated upon login
@@ -175,6 +179,101 @@ app.post('/login', async (req, res) => {
     } else {
       // status 401 if password does not match
       res.json({ success: false, error: { code: '401', msg: 'Invalid password.' }});
+      return;
+    }
+  } catch (err) {
+    res.json({ success: false, error: {code: '400', msg: 'Error.' }});
+    return;
+  }
+});
+
+app.post('/forgotpassword', async (req, res) => {
+  const { username } = req.body;
+  const user = await db.collection('Artisan').findOne({ username: username });
+  // error 404 if user with email doesn't exist
+  if (!user) {
+    res.json({ success: false, error: { code: '404', msg: 'Username with specified username does not exist.' }});
+    return;
+  }
+
+  // gen random token
+  const token = crypto.randomBytes(32).toString('hex');
+  // auto-gen a salt and hash
+  bcrypt.hash(token, 10, async (err, hashToken) => {
+    if (err) return next(err);
+
+    try {
+      // delete all prior tokens corresponding to this user
+      await db.collection('Token').deleteMany( { artisan: ObjectId(user._id) });
+      // save reset token to database
+      const newToken = {
+        artisan: user._id,
+        token: hashToken,
+        expires: Date.now() + 900000,
+      };
+      await db.collection('Token').insertOne(newToken);
+
+      // send reset mail to user's email
+      sendmail({
+        to: user.email,
+        from: 'no-reply@artisan.com',
+        subject: 'Artisan Password Reset',
+        html: `
+          <h2> You requested to reset your password. </h2>
+          <h3>Click on this <a href="http://localhost:5000/resetPassword/${user._id}/${token}">link</a> to reset.</h3>
+          <h3>This link will expire in 15 minutes.</h3>
+        `
+      }, (err, info) => {
+        if (err) {
+          res.json({ success: false, error: { code: '400', msg: 'Error sending email.' }});
+        } else {
+          res.json({ success: true, message: 'Password reset email sent.', info: info });
+          return;
+        }
+      });
+    } catch (err) {
+      res.json({ success: false, error: { code: '400', msg: 'Error.' }});
+    }
+  });
+});
+
+app.put('/resetPassword/:id/:hashtoken', async (req, res) => {
+  const { id, hashtoken } = req.params;
+  // error 404 if token corresponding to user with {id} does not exist
+  const token = await db.collection('Token').findOne({ artisan: ObjectId(id) });
+  if (!token) {
+    res.json({ success: false, error: { code: '404', msg: 'Token expired or does not exist.' }});
+    return;
+  }
+
+  console.log('expires', token.expires);
+  console.log('now', Date.now());
+  // error 401 if token expired
+  if (!(new Date(token.expires) > Date.now())) {
+    await db.collection('Token').deleteMany({ artisan: ObjectId(id) });
+    res.json({ success: false, error: { code: '401', msg: 'Token expired' }});
+    return;
+  }
+  
+  try {
+    // compare tokens
+    const matches = await bcrypt.compare(hashtoken, token.token);
+    if (matches) {
+      // hash password
+      bcrypt.hash(req.body.password, 10, async (err, hashPass) => {
+        if (err) return next(err);
+        
+        // update password and delete token
+        await db.collection('Artisan').updateOne( {_id: ObjectId(id) }, { $set: { password: hashPass } });
+        await db.collection('Token').deleteMany({ artisan: ObjectId(id) });
+
+        // return user token
+        res.status(200).json({ success: true, message: 'Password successfully reset.' });
+        return;
+      });
+    } else {
+      // status 401 if password does not match
+      res.json({ success: false, error: { code: '401', msg: 'Invalid token.' }});
       return;
     }
   } catch (err) {
