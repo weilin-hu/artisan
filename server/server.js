@@ -70,7 +70,6 @@ app.use(passport.initialize());
  * AUTHENTICATION ROUTES 
  * ------------------ 
  */
-// New user registration endpoint
 app.post('/register', async (req, res) => {
   const { username, password, email, birth_month, birth_day, birth_year } = req.body;
 
@@ -143,7 +142,6 @@ app.post('/register', async (req, res) => {
   });
 });
 
-// User login endpoint
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
   // error if all fields not provided
@@ -190,6 +188,7 @@ app.post('/login', async (req, res) => {
 app.post('/forgotpassword', async (req, res) => {
   const { username } = req.body;
   const user = await db.collection('Artisan').findOne({ username: username });
+
   // error 404 if user with email doesn't exist
   if (!user) {
     res.json({ success: false, error: { code: '404', msg: 'Username with specified username does not exist.' }});
@@ -198,13 +197,14 @@ app.post('/forgotpassword', async (req, res) => {
 
   // gen random token
   const token = crypto.randomBytes(32).toString('hex');
+
   // auto-gen a salt and hash
   bcrypt.hash(token, 10, async (err, hashToken) => {
     if (err) return next(err);
-
     try {
       // delete all prior tokens corresponding to this user
       await db.collection('Token').deleteMany( { artisan: ObjectId(user._id) });
+
       // save reset token to database
       const newToken = {
         artisan: user._id,
@@ -239,6 +239,7 @@ app.post('/forgotpassword', async (req, res) => {
 
 app.put('/resetPassword/:id/:hashtoken', async (req, res) => {
   const { id, hashtoken } = req.params;
+
   // error 404 if token corresponding to user with {id} does not exist
   const token = await db.collection('Token').findOne({ artisan: ObjectId(id) });
   if (!token) {
@@ -246,8 +247,6 @@ app.put('/resetPassword/:id/:hashtoken', async (req, res) => {
     return;
   }
 
-  console.log('expires', token.expires);
-  console.log('now', Date.now());
   // error 401 if token expired
   if (!(new Date(token.expires) > Date.now())) {
     await db.collection('Token').deleteMany({ artisan: ObjectId(id) });
