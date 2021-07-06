@@ -52,13 +52,12 @@ const opts = {
 
 // passport use JwtStrategy to extract token from header and sends user associated with token
 passport.use(new JwtStrategy(opts, function(payload, done) {
-  db.collection('Artisan').findOne({ _id : payload.id }).then((user, err) => {
+  db.collection('Artisan').findOne({ _id : ObjectId(payload.id) }).then((user, err) => {
     if (err) done(err, false);
     if (user) {
       return done(null, user);
     } else {
       res.json({success: false, error: {code: '401', msg: 'Invalid token.'}});
-      // res.status(401).json({ error: 'Invalid token.' })
       return done(null, false);
     }
   });
@@ -68,7 +67,7 @@ app.use(passport.initialize());
 
 /** ---------------------
  * AUTHENTICATION ROUTES 
- * ------------------ 
+ * ---------------------- 
  */
 app.post('/register', async (req, res) => {
   const { username, password, email, birth_month, birth_day, birth_year } = req.body;
@@ -88,7 +87,7 @@ app.post('/register', async (req, res) => {
   }
   
   // error if password does not satisfy security requirements
-  if (!password.match(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,20}$/)) {
+  if (!password.match(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,50}$/)) {
     res.json({success: false, error: {code: '400', msg: 'Password format invalid.'}});
     return;
   }
@@ -185,7 +184,7 @@ app.post('/login', async (req, res) => {
   }
 });
 
-app.post('/forgotpassword', async (req, res) => {
+app.post('/forgotPassword', async (req, res) => {
   const { username } = req.body;
   const user = await db.collection('Artisan').findOne({ username: username });
 
@@ -237,8 +236,9 @@ app.post('/forgotpassword', async (req, res) => {
   });
 });
 
-app.put('/resetPassword/:id/:hashtoken', async (req, res) => {
+app.post('/resetPassword/:id/:hashtoken', async (req, res) => {
   const { id, hashtoken } = req.params;
+  const { password } = req.body;
 
   // error 404 if token corresponding to user with {id} does not exist
   const token = await db.collection('Token').findOne({ artisan: ObjectId(id) });
@@ -251,6 +251,12 @@ app.put('/resetPassword/:id/:hashtoken', async (req, res) => {
   if (!(new Date(token.expires) > Date.now())) {
     await db.collection('Token').deleteMany({ artisan: ObjectId(id) });
     res.json({ success: false, error: { code: '401', msg: 'Token expired' }});
+    return;
+  }
+
+  // error if password does not satisfy security requirements
+  if (!password.match(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,50}$/)) {
+    res.json({success: false, error: {code: '400', msg: 'Password format invalid.'}});
     return;
   }
   
@@ -281,7 +287,7 @@ app.put('/resetPassword/:id/:hashtoken', async (req, res) => {
   }
 });
 
-app.post('/forgotusername', async (req, res) => {
+app.post('/forgotUsername', async (req, res) => {
   const { email } = req.body;
   const user = await db.collection('Artisan').findOne({ email: email });
 
@@ -314,6 +320,227 @@ app.post('/forgotusername', async (req, res) => {
     res.json({ success: false, error: { code: '400', msg: 'Error.' }});
   }
 });
+
+/** ---------------------
+ * PROFILE SETTINGS ROUTES 
+ * ---------------------- 
+ */
+app.post('/changeUsername', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { password, username } = req.body;
+  const user = req.user;
+
+  // error 400 if all inputs not included
+  if (!username || !password) {
+    res.json({success: false, error: {code: '400', msg: 'Request malformed: Please include all fields.' }});
+    return;
+  }
+
+  // error 409 if username matches current username
+  if (username === user.username) {
+    res.json({success: false, error: {code: '409', msg: 'Same username chosen.' }});
+    return;
+  }
+
+  // error 409 if username already exists
+  const usernameExists = await db.collection('Artisan').findOne({ username: username });
+  if (usernameExists) {
+    res.json({ success: false, error: {code: '409', msg: 'Username already exists.' }});
+    return;
+  }
+
+  try {
+    // compare passwords
+    const matches = await bcrypt.compare(password, user.password);
+    if (matches) {
+      // change the username
+      await db.collection('Artisan').updateOne({ username: user.username }, { $set: { username: username } });
+      res.json({ success: true, newUsername: username });
+      return;
+
+    } else {
+      // status 401 if password does not match
+      res.json({ success: false, error: { code: '401', msg: 'Invalid password.' }});
+      return;
+    }
+  } catch (err) {
+    res.json({ success: false, error: {code: '400', msg: 'Error.' }});
+    return;
+  }
+});
+
+app.post('/changePassword', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { oldPassword, newPassword } = req.body;
+  const user = req.user;
+
+  // error 400 if all inputs not included
+  if (!oldPassword || !newPassword) {
+    res.json({success: false, error: {code: '400', msg: 'Request malformed: Please include all fields.' }});
+    return;
+  }
+
+  // error if password does not satisfy security requirements
+  if (!newPassword.match(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,50}$/)) {
+    res.json({success: false, error: {code: '400', msg: 'Password format invalid.'}});
+    return;
+  }
+  
+  try {
+    const matches = await bcrypt.compare(oldPassword, user.password);
+    if (matches) {
+      // hash new password
+      bcrypt.hash(newPassword, 10, async (err, hashPass) => {
+        if (err) {
+          res.json({ success: false, error: { code: '400', msg: 'Error hashing new password.' }});
+          return;
+        }
+        
+        // update password
+        await db.collection('Artisan').updateOne( {_id: ObjectId(user._id) }, { $set: { password: hashPass } });
+
+        // return user token
+        res.json({ success: true, newPassword: hashPass, message: 'Password successfully reset.' });
+        return;
+      });
+    } else {      
+      // status 401 if password does not match
+      res.json({ success: false, error: { code: '401', msg: 'Invalid password.' }});
+      return;
+    }
+  } catch (err) {
+    res.json({ success: false, error: {code: '400', msg: 'Error.' }});
+    return;
+  }
+});
+
+// endpoint for uploading profile photo
+
+// endpoint for uploading cover photo
+
+app.post('/changeTitle', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { title } = req.body;
+  const user = req.user;
+
+  try {
+    // if title not given or title length is 0, clear title field
+    if (!title) {
+      await db.collection('Artisan').updateOne({ _id: ObjectId(user._id)}, { $set: { title: '' }});
+      res.json({success: true, title: title, msg: 'Title successfully cleared.' });
+      return;
+    }
+
+    // error 400 if title is too long
+    if (title.length > 32) {
+      res.json({ success: false, error: { code: '400', msg: 'Title is too long.' } });
+      return
+    }
+
+    // update database
+    await db.collection('Artisan').updateOne({ _id: ObjectId(user._id)}, { $set: { title: title }});
+    res.json({success: true, title: title, msg: 'Title successfully reset.' });
+    return;
+
+  } catch (err) {
+    res.json({ success: false, error: {code: '400', msg: 'Error.' }});
+    return;
+  }
+});
+
+app.post('/changeBio', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { bio } = req.body;
+  const user = req.user;
+
+  console.log(bio);
+  try {
+    // if bio not given or bio length is 0, clear bio field
+    if (!bio) {
+      console.log('no bio');
+      await db.collection('Artisan').updateOne({ _id: ObjectId(user._id)}, { $set: { bio: '' }});
+      res.json({success: true, bio: bio, msg: 'Bio successfully cleared.' });
+      return;
+
+    } else {
+      console.log('bio');
+      await db.collection('Artisan').updateOne({ _id: ObjectId(user._id)}, { $set: { bio: bio }});
+      res.json({success: true, bio: bio, msg: 'Bio successfully reset.' });
+      return;
+    }
+  } catch (err) {
+    res.json({ success: false, error: {code: '400', msg: 'Error.' }});
+    return;
+  }
+});
+
+app.post('/deactivate', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { password } = req.body;
+  const user = req.user;
+
+  // error 400 if all inputs not included
+  if (!password) {
+    res.json({ success: false, error: { code: '400', msg: 'Request malformed: Please include your password.' } });
+    return;
+  }
+
+  try {
+    // deactivate user if password matches
+    const matches = await bcrypt.compare(password, user.password);
+    if (matches) {
+      await db.collection('Artisan').updateOne({ _id: ObjectId(user._id) }, { $set: { deactivated: true } });
+      res.json({ success: true, msg: 'Successfully deactivated.' });
+      return;
+
+    } else {      
+      // status 401 if password does not match
+      res.json({ success: false, error: { code: '401', msg: 'Invalid password.' }});
+      return;
+    }
+  } catch(err) {
+    res.json({ success: false, error: {code: '400', msg: 'Error.' }});
+    return;
+  }
+});
+
+app.post('/changePrivacy', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { private } = req.body;
+  const user = req.user;
+
+  // error 400 if all inputs not included
+  if (private == null) {
+    res.json({ success: false, error: { code: '400', msg: 'Request malformed: Missing field provided.' } });
+    return;
+  }
+
+  try {
+    // update user privacy settings
+    await db.collection('Artisan').updateOne({ _id: ObjectId(user._id) }, { $set: { private: private } });
+    res.json({ success: true, msg: 'Successfully reset privacy settings.' });
+    return;
+  } catch(err) {
+    res.json({ success: false, error: {code: '400', msg: 'Error.' }});
+    return;
+  }
+});
+
+app.post('/changeHidden', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { hidden } = req.body;
+  const user = req.user;
+
+  // error 400 if all inputs not included
+  if (hidden == null) {
+    res.json({ success: false, error: { code: '400', msg: 'Request malformed: Missing field provided.' } });
+    return;
+  }
+
+  try {
+    // update user hidden settings
+    await db.collection('Artisan').updateOne({ _id: ObjectId(user._id) }, { $set: { hidden: hidden } });
+    res.json({ success: true, msg: 'Successfully reset hidden settings.' });
+    return;
+  } catch(err) {
+    res.json({ success: false, error: {code: '400', msg: 'Error.' }});
+    return;
+  }
+});
+
 
 // Root endpoint
 // app.get('*', (req, res) => {
