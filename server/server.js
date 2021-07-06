@@ -554,6 +554,19 @@ app.post('/changeHidden', passport.authenticate('jwt', { session: false }), asyn
   }
 });
 
+/** ---------------------
+ * COLLECTION ROUTES 
+ * ---------------------- 
+ */
+app.post('/collection', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { user } = req.user;
+});
+
+
+/** ---------------------
+ * SKETCHBOOK ROUTES 
+ * ---------------------- 
+ */
 
 // Root endpoint
 // app.get('*', (req, res) => {
