@@ -281,6 +281,40 @@ app.put('/resetPassword/:id/:hashtoken', async (req, res) => {
   }
 });
 
+app.post('/forgotusername', async (req, res) => {
+  const { email } = req.body;
+  const user = await db.collection('Artisan').findOne({ email: email });
+
+  // error 404 if user does not exist
+  if (!user) {
+    res.json({ success: false, error: { code: '404', msg: 'User with specified email does not exist.' }});
+    return;
+  }
+
+  try {
+    sendmail({
+      to: user.email,
+      from: 'no-reply@artisan.com',
+      subject: 'Artisan Username Request',
+      html: `
+        <h2> Hi ${user.username}! </h2>
+        <p>You recently requested the username associated with your Artisan account.</p>
+        <p>Your username is <scan>${user.username}</scan>.</p>
+      `
+    }, (err, info) => {
+      if (err) {
+        res.json({ success: false, error: { code: '400', msg: 'Error sending email.' }});
+        return;
+      } else {
+        res.json({ success: true, message: 'Email sent.', info: info });
+        return;
+      }
+    });
+  } catch (err) {
+    res.json({ success: false, error: { code: '400', msg: 'Error.' }});
+  }
+});
+
 // Root endpoint
 // app.get('*', (req, res) => {
 //   console.log('root endpoint');
