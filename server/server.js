@@ -141,6 +141,7 @@ app.post('/register', async (req, res) => {
   });
 });
 
+// TODO: implement online field?
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
   // error if all fields not provided
@@ -182,6 +183,18 @@ app.post('/login', async (req, res) => {
     res.json({ success: false, error: {code: '400', msg: 'Error.' }});
     return;
   }
+});
+
+app.post('/logout', passport.authenticate('jwt', { session: false }), async (req, res) => {
+    try {
+      // set online to false
+      await db.collection('Artisan').updateOne({ _id: ObjectId(req.user._id)}, { $set: { online: false } });
+      res.json({ success: true, msg: 'Successfully logged out.' });
+      return;
+
+    } catch (err) {      
+      res.json({ success: false, error: { code: '400', msg: 'Error.' }});
+    }
 });
 
 app.post('/forgotPassword', async (req, res) => {
