@@ -7,13 +7,14 @@ const bcrypt          = require('bcrypt');
 const jwt             = require('jsonwebtoken');       // allows us to sign token and verify
 const JwtStrategy     = require('passport-jwt').Strategy;
 const ExtractJwt      = require('passport-jwt').ExtractJwt;
-const { MongoClient } = require('mongodb');            // import MongoDB module
+const { MongoClient, ObjectID } = require('mongodb');            // import MongoDB module
 const ObjectId        = require('mongodb').ObjectID;   // Import ObjectID constructor
 
 const crypto          = require('crypto');
 const sendmail        = require('sendmail')();
 
 const mongo           = require('./db-config');
+const { unwatchFile } = require('fs');
 const app             = express();
 const port            = 5000;                          // default server port
 require('dotenv').config(); // allow access to .env variables
@@ -559,9 +560,167 @@ app.post('/changeHidden', passport.authenticate('jwt', { session: false }), asyn
  * ---------------------- 
  */
 app.post('/collection', passport.authenticate('jwt', { session: false }), async (req, res) => {
-  const { user } = req.user;
+  const { name, hidden } = req.body;
+  const user = req.user;
+
+  // error 400 when name field not provided
+  if (!name || hidden == null) {
+    res.json({ success: false, error: { code: '400', msg: 'Must provide a name and privacy setting for the collection.' } });
+    return;
+  }
+
+  // error 400 if name too long
+  if (name.length > 30) {
+    res.json({ success: false, error: { code: '400', msg: 'Name must have at most 30 characters.' } });
+    return;
+  }
+
+  const collection = {
+    name: name,
+    artisan: user._id,
+    artifacts: [],
+    hidden: hidden,
+  }
+
+  try {
+    const inserted = await db.collection('Collection').insertOne(collection);
+    res.json({ success: true, collection: inserted.ops[0], msg: 'Successfully created new collection.' });
+  } catch (err) {
+    res.json({ success: false, error: {code: '400', msg: 'Error.' }});
+    return;
+  }
 });
 
+app.get('/collection/:collectionID', async (req, res) => {
+  const { collectionID } = req.params;
+});
+
+app.post('/collection/:collectionID/insert', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { collectionID } = req.params;
+  const { artifact } = req.body;
+  const user = req.user;
+
+  try {
+    // error 400 if missing fields
+    if (!collectionID || !artifact) {
+      res.json({ success: false, error: { code: '400', msg: 'You must provide both a collection and artifact.' } });
+      return;
+    }
+
+    // error 404 if collection does not exist
+    const collection = await db.collection('Collection').findOne({ _id: ObjectId(collectionID) });
+    if (!collection) {
+      res.json({ success: false, error: { code: '404', msg: 'This collection does not exist.' } });
+      return;
+    }
+
+    // error 401 if user does not own collection
+    if (!ObjectId(user._id).equals(ObjectId(collection.artisan))) {
+      res.json({ success: false, error: { code: '401', msg: 'Only creator of this collection can add artifacts to it.' } });
+      return;
+    }
+
+    // error 404 if artifact does not exist
+    const artifactExists = await db.collection('Artifact').findOne({ _id: ObjectId(artifact) });
+    if (!artifactExists) {
+      res.json({ success: false, error: { code: '404', msg: 'This artifact does not exist.' } });
+      return;
+    }
+
+    // error 409 if collection already contains this artifact
+    if (collection.artifacts.includes(artifact)) {
+      res.json({ success: false, error: { code: '409', msg: 'This collection already contains this artifact.' } });
+      return;
+    }
+
+    await db.collection('Collection').updateOne({ _id: ObjectId(collectionID) }, { $push: { artifacts: artifact } });
+    res.json({ success: true, msg: 'Successfully added artifact to collection.' });
+    
+  } catch (err) {
+    res.json({ success: false, error: {code: '400', msg: 'Error.' }});
+    return;
+  }
+});
+
+app.post('/collection/:collectionID/remove', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { collectionID } = req.params;
+  const { artifact } = req.body;
+  const user = req.user;
+
+  try {
+    // error 400 if missing fields
+    if (!collectionID || !artifact) {
+      res.json({ success: false, error: { code: '400', msg: 'You must provide both a collection and artifact.' } });
+      return;
+    }
+
+    // error 404 if collection does not exist
+    const collection = await db.collection('Collection').findOne({ _id: ObjectId(collectionID) });
+    if (!collection) {
+      res.json({ success: false, error: { code: '404', msg: 'This collection does not exist.' } });
+      return;
+    }
+
+    // error 401 if user does not own collection
+    if (!ObjectId(user._id).equals(ObjectId(collection.artisan))) {
+      res.json({ success: false, error: { code: '401', msg: 'Only creator of this collection can add artifacts to it.' } });
+      return;
+    }
+
+    // error 404 if artifact does not exist
+    const artifactExists = await db.collection('Artifact').findOne({ _id: ObjectId(artifact) });
+    if (!artifactExists) {
+      res.json({ success: false, error: { code: '404', msg: 'This artifact does not exist.' } });
+      return;
+    }
+
+    // error 409 if collection already contains this artifact
+    if (!collection.artifacts.includes(artifact)) {
+      res.json({ success: false, error: { code: '409', msg: 'This collection does not contain this artifact.' } });
+      return;
+    }
+
+    await db.collection('Collection').updateOne({ _id: ObjectId(collectionID) }, { $pull: { artifacts: artifact } });
+    res.json({ success: true, msg: 'Successfully removed artifact from collection.' });
+    
+  } catch (err) {
+    res.json({ success: false, error: {code: '400', msg: 'Error.' }});
+    return;
+  }
+});
+
+app.delete('/collection/:collectionID', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { collectionID } = req.params;
+  const user = req.user;
+
+  try {
+    // error 400 if missing fields
+    if (!collectionID) {
+      res.json({ success: false, error: { code: '400', msg: 'You must provide a collection to delete.' } });
+      return;
+    }
+
+    // error 404 if collection does not exist
+    const collection = await db.collection('Collection').findOne({ _id: ObjectId(collectionID) });
+    if (!collection) {
+      res.json({ success: false, error: { code: '404', msg: 'This collection does not exist.' } });
+      return;
+    }
+
+    // error 401 if user does not own collection
+    if (!ObjectId(user._id).equals(ObjectId(collection.artisan))) {
+      res.json({ success: false, error: { code: '401', msg: 'Only creator of this collection can delete it.' } });
+      return;
+    }
+
+    await db.collection('Collection').deleteOne({ _id: ObjectId(collectionID) });
+    res.json({ success: true, msg: 'Successfully removed collection.' });
+    
+  } catch (err) {
+    res.json({ success: false, error: {code: '400', msg: 'Error.' }});
+    return;
+  }
+});
 
 /** ---------------------
  * SKETCHBOOK ROUTES 
