@@ -52,16 +52,27 @@ const opts = {
 };
 
 // passport use JwtStrategy to extract token from header and sends user associated with token
-passport.use(new JwtStrategy(opts, function(payload, done) {
-  db.collection('Artisan').findOne({ _id : ObjectId(payload.id) }).then((user, err) => {
-    if (err) done(err, false);
+passport.use(new JwtStrategy(opts, async function(payload, done) {
+  try {
+    const user = await db.collection('Artisan').findOne({ _id: ObjectId(payload.id) });
     if (user) {
       return done(null, user);
     } else {
       res.json({success: false, error: {code: '401', msg: 'Invalid token.'}});
       return done(null, false);
     }
-  });
+  } catch (err) {
+    return done(err, false);
+  }
+  // db.collection('Artisan').findOne({ _id : ObjectId(payload.id) }).then((user, err) => {
+  //   if (err) done(err, false);
+  //   if (user) {
+  //     return done(null, user);
+  //   } else {
+  //     res.json({success: false, error: {code: '401', msg: 'Invalid token.'}});
+  //     return done(null, false);
+  //   }
+  // });
 }));
 
 app.use(passport.initialize());
@@ -559,12 +570,13 @@ app.post('/changeHidden', passport.authenticate('jwt', { session: false }), asyn
  * COLLECTION ROUTES 
  * ---------------------- 
  */
+// new collection
 app.post('/collection', passport.authenticate('jwt', { session: false }), async (req, res) => {
-  const { name, hidden } = req.body;
+  const { name, hidden, private } = req.body;
   const user = req.user;
 
   // error 400 when name field not provided
-  if (!name || hidden == null) {
+  if (!name || hidden == null || private == null) {
     res.json({ success: false, error: { code: '400', msg: 'Must provide a name and privacy setting for the collection.' } });
     return;
   }
@@ -580,6 +592,7 @@ app.post('/collection', passport.authenticate('jwt', { session: false }), async 
     artisan: user._id,
     artifacts: [],
     hidden: hidden,
+    private: private,
   }
 
   try {
@@ -591,10 +604,60 @@ app.post('/collection', passport.authenticate('jwt', { session: false }), async 
   }
 });
 
+// get collection data
 app.get('/collection/:collectionID', async (req, res) => {
   const { collectionID } = req.params;
+
+  // error 404 if collection doesn't exist
+  const collection = await db.collection('Collection').findOne({ _id: ObjectId(collectionID) });
+  if (!collection) {
+    res.json({ success: false, error: { code: '404', msg: `Collection ${collectionID} does not exist.` } });
+    return;
+  }
+
+  // if collection is not hidden, return collection data (anyone can view)
+  if (!collection.hidden) {
+    res.json({ success: true, collection: collection, msg: 'Successfully retrieve collection.' });
+    return;
+  }
+
+  // collection is hidden --> check authorization details
+  const { authorization } = req.headers;
+  if (authorization && authorization.split(' ')[0] === 'Bearer') {
+    const token = authorization.split(' ')[1];
+    try {
+      // id of logged-in user
+      const { id } = jwt.verify(token, process.env.JWT_KEY);
+
+      // return collection if logged-in user is owner
+      if (ObjectId(id).equals(ObjectId(collection.artisan))) {
+        res.json({ success: true, collection: collection, msg: 'Successfully retrieve collection.' });
+        return;
+      }
+      
+      // return collection if collection is not private and logged-in user is an admirer
+      if (!collection.private) {
+        const isAdmirer = await db.collection('Artisan').findOne({ _id: ObjectId(collection.artisan), admirers: id });
+        if (isAdmirer) {
+          res.json({ success: true, collection: collection, msg: 'Successfully retrieve collection.' });
+          return;
+        }
+      }
+      
+      // error 401 if collection is private or user is not an admirer
+      res.json({ success: false, error: { code: '401', msg: `You do not have permission to view Collection ${collectionID}.` } });
+      return;
+    } catch (err) {
+      res.json({ success: false, error: { code: '400', msg: `${err}` } });
+      return;
+    }      
+  } else {
+    res.json({ success: false, error: { code: '401', msg: `Collection ${collectionID} cannot be viewed. No authorization.` } });
+    return;
+  }
 });
 
+// add artifact to collection
 app.post('/collection/:collectionID/insert', passport.authenticate('jwt', { session: false }), async (req, res) => {
   const { collectionID } = req.params;
   const { artifact } = req.body;
@@ -642,6 +705,7 @@ app.post('/collection/:collectionID/insert', passport.authenticate('jwt', { sess
   }
 });
 
+// remove artifact from collection
 app.post('/collection/:collectionID/remove', passport.authenticate('jwt', { session: false }), async (req, res) => {
   const { collectionID } = req.params;
   const { artifact } = req.body;
@@ -689,6 +753,85 @@ app.post('/collection/:collectionID/remove', passport.authenticate('jwt', { sess
   }
 });
 
+// rename collection
+app.post('/collection/:collectionID/rename', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { collectionID } = req.params;
+  const { name } = req.body;
+  const user = req.user;
+
+  // error 400 if name not provided
+  if (!name) {
+    res.json({ success: false, error: { code: '400', msg: 'You must provide both a new name.' } });
+    return;
+  }
+
+  // error 400 if name too long
+  if (name.length > 30) {
+    res.json({ success: false, error: { code: '400', msg: 'Name must have at most 30 characters.' } });
+    return;
+  }
+
+  try {
+    const collection = await db.collection('Collection').findOne({ _id: ObjectId(collectionID) });
+
+    // error 404 if collection does not exist
+    if (!collection) {
+      res.json({ success: false, error: { code: '404', msg: 'This collection does not exist.' } });
+      return;
+    }
+
+    // error 401 if user is not the owner of the collection
+    if (!ObjectId(collection.artisan).equals(ObjectId(user._id))) {
+      res.json({ success: false, error: { code: '401', msg: 'Only creator of this collection can rename it.' } });
+      return;
+    }
+
+    await db.collection('Collection').updateOne({ _id: ObjectId(collectionID) }, { $set: { name: name } });
+    res.json({ success: true, new_name: name, msg: 'Successfully renamed collection.' });
+    return;
+  } catch (err) {
+    res.json({ success: false, error: {code: '400', msg: `Error: ${err}.` }});
+    return;
+  }
+});
+
+// change privacy
+app.post('/collection/:collectionID/privacy', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { collectionID } = req.params;
+  const { hidden, private } = req.body;
+  const user = req.user;
+
+  // error 400 if name not provided
+  if (hidden == null || private == null) {
+    res.json({ success: false, error: { code: '400', msg: 'You must provide a privacy setting.' } });
+    return;
+  }
+
+  try {
+    const collection = await db.collection('Collection').findOne({ _id: ObjectId(collectionID) });
+
+    // error 404 if collection does not exist
+    if (!collection) {
+      res.json({ success: false, error: { code: '404', msg: 'This collection does not exist.' } });
+      return;
+    }
+
+    // error 401 if user is not the owner of the collection
+    if (!ObjectId(collection.artisan).equals(ObjectId(user._id))) {
+      res.json({ success: false, error: { code: '401', msg: 'Only creator of this collection can rename it.' } });
+      return;
+    }
+
+    await db.collection('Collection').updateOne({ _id: ObjectId(collectionID) }, { $set: { hidden: hidden, private: private } });
+    res.json({ success: true, hidden: hidden, private: private, msg: 'Successfully changed privacy settings of collection.' });
+    return;
+  } catch (err) {
+    res.json({ success: false, error: {code: '400', msg: `Error: ${err}.` }});
+    return;
+  }
+});
+
+// delete collection
 app.delete('/collection/:collectionID', passport.authenticate('jwt', { session: false }), async (req, res) => {
   const { collectionID } = req.params;
   const user = req.user;
@@ -717,7 +860,7 @@ app.delete('/collection/:collectionID', passport.authenticate('jwt', { session: 
     res.json({ success: true, msg: 'Successfully removed collection.' });
     
   } catch (err) {
-    res.json({ success: false, error: {code: '400', msg: 'Error.' }});
+    res.json({ success: false, error: {code: '400', msg: `Error: ${err}.` }});
     return;
   }
 });
