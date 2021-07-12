@@ -869,6 +869,47 @@ app.delete('/collection/:collectionID', passport.authenticate('jwt', { session: 
  * SKETCHBOOK ROUTES 
  * ---------------------- 
  */
+// create sketchbook
+app.post('/sketchbook', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { title, view } = req.body;
+  const user = req.user;
+
+  if (!view || !title) {
+    res.json({ success: false, error: { code: '400', msg: 'You must provide a privacy setting and title.' } });
+    return;
+  }
+});
+
+// get sketchbook data
+app.get('/sketchbook/:sketchbookID', async (req, res) => {
+
+});
+
+// rename sketchbook
+app.post('/sketchbook/:sketchbookID/rename', passport.authenticate('jwt', { session: false }), async (req, res) => {
+
+});
+
+// new cover sketchbook
+app.post('/sketchbook/:sketchbookID/cover', passport.authenticate('jwt', { session: false }), async (req, res) => {
+
+});
+
+// change privacy of sketchbook
+app.post('/sketchbook/:sketchbookID/privacy', passport.authenticate('jwt', { session: false }), async (req, res) => {
+
+});
+
+// delete sketchbook
+app.delete('/sketchbook/:sketchbookID', passport.authenticate('jwt', { session: false }), async (req, res) => {
+
+});
+
+// get sketchbook page data
+app.get('/sketchbook/:sketchbookID/page/:pageNum', async (req, res) => {
+
+});
+
 
 // Root endpoint
 // app.get('*', (req, res) => {
