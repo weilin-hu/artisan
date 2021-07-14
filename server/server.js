@@ -637,7 +637,7 @@ app.get('/collection/:collectionID', async (req, res) => {
       
       // return collection if collection is not private and logged-in user is an admirer
       if (!collection.private) {
-        const isAdmirer = await db.collection('Artisan').findOne({ _id: ObjectId(collection.artisan), admirers: id });
+        const isAdmirer = await db.collection('Artisan').findOne({ _id: ObjectId(collection.artisan), admirers: ObjectId(id) });
         if (isAdmirer) {
           res.json({ success: true, collection: collection, msg: 'Successfully retrieve collection.' });
           return;
@@ -874,20 +874,131 @@ app.post('/sketchbook', passport.authenticate('jwt', { session: false }), async 
   const { title, view } = req.body;
   const user = req.user;
 
+  // error 400 if view or title not provided
   if (!view || !title) {
     res.json({ success: false, error: { code: '400', msg: 'You must provide a privacy setting and title.' } });
+    return;
+  }
+
+  // error 400 if view is not All, Private, or Only Me
+  if (view !== 'public' && view !== 'private' && view !== 'only me') {
+    res.json({ success: false, error: { code: '400', msg: 'Privacy setting invalid.' } });
+    return;
+  }
+
+  // error 400 if title is too long
+  if (title.length > 30) {
+    res.json({ success: false, error: { code: '400', msg: 'Title too long.' } });
+    return;
+  }
+
+  // initialize page objects
+  const page = {
+    title: '',
+    sketch: '',
+    nsfw: false,
+    date: new Date(),
+  };
+
+  // initialize sketchbook object
+  const sketchbook = {
+    owner: user._id,
+    title: title,
+    cover: '',
+    date_created: new Date(),
+    last_updated: new Date(),
+    who_can_view: view,
+    views: 0,
+    pages: new Array(50).fill(page),
+  };
+
+  try {
+    await db.collection('Sketchbook').insertOne(sketchbook);
+    res.json({ success: true, sketchbook: sketchbook, msg: 'Successfully created sketchbook.' });
+  } catch (err) {
+    res.json({ success: false, error: {code: '400', msg: `Error: ${err}.` }});
     return;
   }
 });
 
 // get sketchbook data
-app.get('/sketchbook/:sketchbookID', async (req, res) => {
+app.get('/sketchbook/:sketchbookID', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { sketchbookID } = req.params;
+  const user = req.user;
 
+  try {
+    const sketchbook = await db.collection('Sketchbook').findOne({ _id: ObjectId(sketchbookID) });
+    // error 404 if sketchbook does not exist
+    if (!sketchbook) {
+      res.json({ success: false, error: { code: '404', msg: 'This sketchbook does not exit.' } });
+      return;
+    }
+
+    const view = sketchbook.who_can_view;
+    // if sketchbook is public or user is owner of sketchbook, return sketchbook data
+    if (view === 'public' || ObjectId(sketchbook.owner).equals(ObjectId(user._id))) {
+      res.json({ success: true, sketchbook: sketchbook, msg: 'Successfully retrieved sketchbook.' });
+      return;
+    }
+
+    // if sketchbook is private and user is an admirer of the owner
+    if (view === 'private') {
+      const isFollower = await db.collection('Artisan').findOne({ _id: ObjectId(sketchbook.owner), admirers: ObjectId(user._id) });
+      if (isFollower) {
+        res.json({ success: true, sketchbook: sketchbook, msg: 'Successfully retrieved sketchbook.' });
+        return;
+      }
+    }
+
+    // error 401 if unauthorized to view the sketchbook
+    res.json({ success: false, error: {code: '401', msg: 'You cannot view this sketchbook.' } });
+    return;
+
+  } catch (err) {
+    res.json({ success: false, error: {code: '400', msg: `Error: ${err}.` } });
+    return;
+  }
 });
 
 // rename sketchbook
 app.post('/sketchbook/:sketchbookID/rename', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const user = req.user;
+  const { sketchbookID } = req.params;
+  const { title } = req.body;
 
+  // error 400 if title was not provided
+  if (!title) {
+    res.json({ success: false, error: { code: '400', msg: 'Must provide a new title.' } });
+    return;
+  }
+
+  // error 400 if title is too long
+  if (title.length > 30) {
+    res.json({ success: false, error: { code: '400', msg: 'Title too long.' } });
+    return;
+  }
+
+  try {
+    const sketchbook = await db.collection('Sketchbook').findOne({ _id: ObjectId(sketchbookID) });
+    // error 404 if sketchbook does not exist
+    if (!sketchbook) {
+      res.json({ success: false, error: { code: '404', msg: 'Sketchbook does not exist.' } });
+      return;
+    }
+
+    // error 401 if user is not hte owner of this sketchbook
+    if (!ObjectId(user._id).equals(ObjectId(sketchbook.owner))) {
+      res.json({ success: false, error: { code: '401', msg: 'Only the owner of this sketchbook can rename it.' } });
+      return;
+    }
+
+    await db.collection('Sketchbook').updateOne({ _id: ObjectId(sketchbookID) }, { $set: { title: title } });
+    res.json({ success: true, updated: title, msg: 'Successfully renamed sketchbook.' });
+
+  } catch (err) {
+    res.json({ success: false, error: {code: '400', msg: `Error: ${err}.` }});
+    return;
+  }
 });
 
 // new cover sketchbook
@@ -897,19 +1008,149 @@ app.post('/sketchbook/:sketchbookID/cover', passport.authenticate('jwt', { sessi
 
 // change privacy of sketchbook
 app.post('/sketchbook/:sketchbookID/privacy', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const user = req.user;
+  const { sketchbookID } = req.params;
+  const { view } = req.body;
 
+  // error 400 if title was not provided
+  if (view !== 'public' && view !== 'private' && view !== 'only me') {
+    res.json({ success: false, error: { code: '400', msg: 'View must be public, private, or only me.' } });
+    return;
+  }
+
+  try {
+    const sketchbook = await db.collection('Sketchbook').findOne({ _id: ObjectId(sketchbookID) });
+    // error 404 if sketchbook does not exist
+    if (!sketchbook) {
+      res.json({ success: false, error: { code: '404', msg: 'Sketchbook does not exist.' } });
+      return;
+    }
+
+    // error 401 if user is not hte owner of this sketchbook
+    if (!ObjectId(user._id).equals(ObjectId(sketchbook.owner))) {
+      res.json({ success: false, error: { code: '401', msg: 'Only the owner of this sketchbook can rename it.' } });
+      return;
+    }
+
+    await db.collection('Sketchbook').updateOne({ _id: ObjectId(sketchbookID) }, { $set: { who_can_view: view } });
+    res.json({ success: true, updated: view, msg: 'Successfully updated privacy of sketchbook.' });
+
+  } catch (err) {
+    res.json({ success: false, error: {code: '400', msg: `Error: ${err}.` }});
+    return;
+  }
 });
 
 // delete sketchbook
 app.delete('/sketchbook/:sketchbookID', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { sketchbookID } = req.params;
+  const user = req.user;
 
+  try {
+    const sketchbook = await db.collection('Sketchbook').findOne({ _id: ObjectId(sketchbookID) });
+    // error 404 if sketchbook does not exist
+    if (!sketchbook) {
+      res.json({ success: false, error: { code: '404', msg: 'Sketchbook does not exist.' } });
+      return;
+    }
+
+    // error 401 if user is not hte owner of this sketchbook
+    if (!ObjectId(user._id).equals(ObjectId(sketchbook.owner))) {
+      res.json({ success: false, error: { code: '401', msg: 'Only the owner of this sketchbook can rename it.' } });
+      return;
+    }
+
+    // delete sketchbook from db
+    await db.collection('Sketchbook').deleteOne({ _id: ObjectId(sketchbookID) });
+    res.json({ success: true, msg: 'Successfully deleted sketchbook.' });
+
+  } catch (err) {
+    res.json({ success: false, error: {code: '400', msg: `Error: ${err}.` }});
+    return;
+  }
 });
 
 // get sketchbook page data
-app.get('/sketchbook/:sketchbookID/page/:pageNum', async (req, res) => {
+app.get('/sketchbook/:sketchbookID/page/:pageNum', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { sketchbookID } = req.params;
+  const pageNum = parseInt(req.params.pageNum);
+  const user = req.user;
+
+  // error 400 if page out of bounds
+  if (pageNum < 1 || pageNum > 50) {
+    res.json({ success: false, error: { code: '400', msg: 'Please select a page from 1 to 50.' } });
+    return;
+  }
+
+  try {
+    const sketchbook = await db.collection('Sketchbook').findOne({ _id: ObjectId(sketchbookID) });
+    // error 404 if sketchbook does not exist
+    if (!sketchbook) {
+      res.json({ success: false, error: { code: '404', msg: 'This sketchbook does not exit.' } });
+      return;
+    }
+    
+    // get sketchbook page
+    const page = sketchbook.pages[pageNum - 1];
+
+    const view = sketchbook.who_can_view;
+    // if sketchbook is public or user is owner of sketchbook, return sketchbook data
+    if (view === 'public' || ObjectId(sketchbook.owner).equals(ObjectId(user._id))) {
+      res.json({ success: true, page: page, msg: 'Successfully retrieved sketchbook page.' });
+      return;
+    }
+
+    // if sketchbook is private and user is an admirer of the owner
+    if (view === 'private') {
+      const isFollower = await db.collection('Artisan').findOne({ _id: ObjectId(sketchbook.owner), admirers: ObjectId(user._id) });
+      if (isFollower) {
+        res.json({ success: true, page: page, msg: 'Successfully retrieved sketchbook page.' });
+        return;
+      }
+    }
+
+    // error 401 if unauthorized to view the sketchbook
+    res.json({ success: false, error: {code: '401', msg: 'You cannot view this sketchbook.' } });
+    return;
+
+  } catch (err) {
+    res.json({ success: false, error: {code: '400', msg: `Error: ${err}.` } });
+    return;
+  }
+});
+
+app.post('/sketchbook/:sketchbookID/page/:pageNum/title', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { title } = req.body;
+  const { sketchbookID } = req.params;
+  const pageNum = parseInt(req.params.pageNum);
+  const user = req.user;
+
+  if (!title) {
+    res.json({ success: false, error: { code: '400', msg: 'You must provide a new title.' } });
+    return;
+  }
+
+  try {
+    const sketchbook = await db.collection('Sketchbook').findOne({ _id: ObjectId(sketchbookID) });
+    if (!sketchbook) {
+      res.json({ success: false, error: { code: '404', msg: 'Sketchbook does not exist.' } });
+      return;
+    }
+
+    
+
+  } catch (err) {
+
+  }
+});
+
+app.post('/sketchbook/:sketchbookID/page/:pageNum/nsfw', passport.authenticate('jwt', { session: false }), async (req, res) => {
 
 });
 
+app.post('/sketchbook/:sketchbookID/page/:pageNum/upload', passport.authenticate('jwt', { session: false }), async (req, res) => {
+
+});
 
 // Root endpoint
 // app.get('*', (req, res) => {
