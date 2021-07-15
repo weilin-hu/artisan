@@ -15,6 +15,7 @@ const sendmail        = require('sendmail')();
 
 const mongo           = require('./db-config');
 const { unwatchFile } = require('fs');
+const { title } = require('process');
 const app             = express();
 const port            = 5000;                          // default server port
 require('dotenv').config(); // allow access to .env variables
@@ -893,12 +894,18 @@ app.post('/sketchbook', passport.authenticate('jwt', { session: false }), async 
   }
 
   // initialize page objects
-  const page = {
-    title: '',
-    sketch: '',
-    nsfw: false,
-    date: new Date(),
-  };
+  let pages = new Array(50);  
+  for (let i = 0; i < 50; i++) {
+    const page = {
+      num: i,
+      title: '',
+      sketch: '',
+      nsfw: false,
+      date: new Date(),
+    };
+
+    pages[i] = page;
+  }  
 
   // initialize sketchbook object
   const sketchbook = {
@@ -909,7 +916,7 @@ app.post('/sketchbook', passport.authenticate('jwt', { session: false }), async 
     last_updated: new Date(),
     who_can_view: view,
     views: 0,
-    pages: new Array(50).fill(page),
+    pages: pages,
   };
 
   try {
@@ -1122,11 +1129,21 @@ app.get('/sketchbook/:sketchbookID/page/:pageNum', passport.authenticate('jwt', 
 app.post('/sketchbook/:sketchbookID/page/:pageNum/title', passport.authenticate('jwt', { session: false }), async (req, res) => {
   const { title } = req.body;
   const { sketchbookID } = req.params;
-  const pageNum = parseInt(req.params.pageNum);
+  const pageNum = parseInt(req.params.pageNum) - 1;
   const user = req.user;
 
   if (!title) {
     res.json({ success: false, error: { code: '400', msg: 'You must provide a new title.' } });
+    return;
+  }
+
+  if (title.length > 30) {
+    res.json({ success: false, error: { code: '400', msg: 'The title you provided is too long.' } });
+    return;
+  }
+
+  if (pageNum < 0 || pageNum > 49) {
+    res.json({ success: false, error: { code: '400', msg: 'Please select a page from 1 to 50.' } });
     return;
   }
 
@@ -1137,19 +1154,163 @@ app.post('/sketchbook/:sketchbookID/page/:pageNum/title', passport.authenticate(
       return;
     }
 
-    
+    if (!ObjectId(sketchbook.owner).equals(Object(user._id))) {
+      res.json({ success: false, error: { code: '401', msg: 'You do not have permission to edit this page.' } });
+      return;
+    }
+
+    const options = {
+      arrayFilters: [{
+        'orderItem.num': pageNum,
+      }]
+    };
+
+    await db.collection('Sketchbook').updateOne({ _id: ObjectId(sketchbookID) }, { $set: { 'pages.$[orderItem].title' : title } }, options);
+    res.json({ success: true, newTitle: title, msg: 'Successfully retitled page.' });
 
   } catch (err) {
-
+    res.json({ success: false, error: {code: '400', msg: `Error: ${err}.` } });
+    return;
   }
 });
 
 app.post('/sketchbook/:sketchbookID/page/:pageNum/nsfw', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { nsfw } = req.body;
+  const { sketchbookID } = req.params;
+  const pageNum = parseInt(req.params.pageNum) - 1;
+  const user = req.user;
 
+  if (nsfw == null) {
+    res.json({ success: false, error: { code: '400', msg: 'You must provide a new title.' } });
+    return;
+  }
+
+  if (pageNum < 0 || pageNum > 49) {
+    res.json({ success: false, error: { code: '400', msg: 'Please select a page from 1 to 50.' } });
+    return;
+  }
+
+  try {
+    const sketchbook = await db.collection('Sketchbook').findOne({ _id: ObjectId(sketchbookID) });
+    if (!sketchbook) {
+      res.json({ success: false, error: { code: '404', msg: 'Sketchbook does not exist.' } });
+      return;
+    }
+
+    // error 409 if there is nothing to update
+    if (sketchbook.pages[pageNum].nsfw === nsfw) {
+      res.json({ success: false, error: {code: '409', msg: 'These are your current settings.' } });
+      return;
+    }
+
+    if (!ObjectId(sketchbook.owner).equals(Object(user._id))) {
+      res.json({ success: false, error: { code: '401', msg: 'You do not have permission to edit this page.' } });
+      return;
+    }
+
+    const options = {
+      arrayFilters: [{
+        'orderItem.num': pageNum,
+      }]
+    };
+
+    await db.collection('Sketchbook').updateOne({ _id: ObjectId(sketchbookID) }, { $set: { 'pages.$[orderItem].nsfw' : nsfw } }, options);
+    res.json({ success: true, nsfw: nsfw, msg: 'Successfully changed nsfw settings for page.' });
+
+  } catch (err) {
+    res.json({ success: false, error: {code: '400', msg: `Error: ${err}.` } });
+    return;
+  }
 });
 
 app.post('/sketchbook/:sketchbookID/page/:pageNum/upload', passport.authenticate('jwt', { session: false }), async (req, res) => {
 
+});
+
+
+/** ---------------------
+ * SKETCHBOOK ROUTES 
+ * ---------------------- 
+ */
+app.post('/artifact', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { url, title, note, tags } = req.body;
+  const user = req.user;
+
+  if (!url || !title | !tags ) {
+    res.json({ success: false, error: { code: '400', msg: 'Missing fields provided.' } });
+    return;
+  }
+
+  if (title.length > 40) {
+    res.json({ success: false, error: { code: '400', msg: 'Title cannot be more than 40 characters.' } });
+    return;
+  }
+
+  try {
+    const artifact = {
+      artisan: user._id,
+      url: url,
+      title: title,
+      admirers: 0,
+      note: note,
+      date: new Date(),
+      tags: tags,
+    }
+
+    await db.collection('Artifact').insertOne(artifact);
+    res.json({ success: true, artifact: artifact, msg: 'Artifact successfully created.' });
+
+  } catch (err) {
+    res.json({ success: false, error: { code: '400', msg: `Error: ${err}.` } });
+    return;
+  }  
+});
+
+// get artifact
+app.get('/artifact/:artifactID', async (req, res) => {
+  const { artifactID } = req.params;
+
+  try {
+    const artifact = db.collection('Artifact').findOne({ _id: ObjectId(artifactID) });
+    if (!artifact) {
+      res.json({ success: false, error: { code: '404', msg: 'Artifact does not exist' });
+      return;
+    }
+
+    // return data if artisan profile is public
+    const artisan = db.collection('Artisan').findOne({ _id: ObjectId(artifact.artisan._id) });
+    if (!artisan.private) {
+      res.json({ success: true, artifact: artifact, msg: 'Successfully retrieve artifact data.' });
+      return;
+    }  
+    
+    // if artisan profile is not public, check authorization details
+    const { authorization } = req.headers;
+    if (authorization && authorization.split(' ')[0] === 'Bearer') {
+      const token = authorization.split(' ')[1];
+      // id of logged-in user
+      const { id } = jwt.verify(token, process.env.JWT_KEY);
+    
+      // return artifact if logged-in user is artisan
+      if (ObjectId(id).equals(ObjectId(artifact.artisan))) {
+        res.json({ success: true, collection: collection, msg: 'Successfully retrieve artifact.' });
+        return;
+      }
+
+      const isAdmirer = await db.collection('Artisan').findOne({ _id: ObjectId(artifact.artisan), admirers: ObjectId(id) });
+      if (isAdmirer) {
+        res.json({ success: true, artifact: artifact, msg: 'Successfully retrieve artifact.' });
+        return;
+      }
+    }
+      
+    // error 401 user is not an admirer
+    res.json({ success: false, error: { code: '401', msg: `You do not have permission to view artifact ${artifactID}.` } });
+    return;
+  } catch (err) {
+    res.json({ success: false, error: { code: '400', msg: `Error: ${err}.` } });
+    return;
+  }
 });
 
 // Root endpoint
