@@ -7,15 +7,12 @@ const bcrypt          = require('bcrypt');
 const jwt             = require('jsonwebtoken');       // allows us to sign token and verify
 const JwtStrategy     = require('passport-jwt').Strategy;
 const ExtractJwt      = require('passport-jwt').ExtractJwt;
-const { MongoClient, ObjectID } = require('mongodb');            // import MongoDB module
-const ObjectId        = require('mongodb').ObjectID;   // Import ObjectID constructor
+const { MongoClient, ObjectId } = require('mongodb');            // import MongoDB module
 
 const crypto          = require('crypto');
 const sendmail        = require('sendmail')();
 
 const mongo           = require('./db-config');
-const { unwatchFile } = require('fs');
-const { title } = require('process');
 const app             = express();
 const port            = 5000;                          // default server port
 require('dotenv').config(); // allow access to .env variables
@@ -1229,7 +1226,7 @@ app.post('/sketchbook/:sketchbookID/page/:pageNum/upload', passport.authenticate
 
 
 /** ---------------------
- * SKETCHBOOK ROUTES 
+ * ARTIFACT ROUTES 
  * ---------------------- 
  */
 app.post('/artifact', passport.authenticate('jwt', { session: false }), async (req, res) => {
@@ -1266,6 +1263,15 @@ app.post('/artifact', passport.authenticate('jwt', { session: false }), async (r
   }  
 });
 
+// helper method that checks whether user is id {id} is authorized to view/like/dislike/etc artifact with author {artisan}
+const isAuthorized = (artisan, id) => {
+  if (!id) {
+    return !artisan.private;
+  }
+  const isAdmirer = artisan.admirers.includes(ObjectId(id).toString());
+  return !artisan.private || ObjectId(id).equals(ObjectId(artisan._id)) || isAdmirer;
+};
+
 // get artifact
 app.get('/artifact/:artifactID', async (req, res) => {
   const { artifactID } = req.params;
@@ -1277,37 +1283,26 @@ app.get('/artifact/:artifactID', async (req, res) => {
       res.json({ success: false, error: { code: '404', msg: 'Artifact does not exist' }});
       return;
     }
-
-    // return data if artisan profile is public
-    const artisan = await db.collection('Artisan').findOne({ _id: ObjectId(artifact.artisan) });
-    if (!artisan.private) {
-      res.json({ success: true, artifact: artifact, msg: 'Successfully retrieve artifact data.' });
-      return;
-    }  
     
     // if artisan profile is not public, check authorization details
     const { authorization } = req.headers;
+    let id = '';
     if (authorization && authorization.split(' ')[0] === 'Bearer') {
       const token = authorization.split(' ')[1];
       // id of logged-in user
-      const { id } = jwt.verify(token, process.env.JWT_KEY);
-    
-      // return artifact if logged-in user is artisan
-      if (ObjectId(id).equals(ObjectId(artifact.artisan))) {
-        res.json({ success: true, collection: collection, msg: 'Successfully retrieve artifact.' });
-        return;
-      }
-
-      const isAdmirer = await db.collection('Artisan').findOne({ _id: ObjectId(artifact.artisan), admirers: ObjectId(id).toString() });
-      if (isAdmirer) {
-        res.json({ success: true, artifact: artifact, msg: 'Successfully retrieve artifact.' });
-        return;
-      }
+      id = jwt.verify(token, process.env.JWT_KEY).id;
     }
-      
-    // error 401 user is not an admirer
-    res.json({ success: false, error: { code: '401', msg: `You do not have permission to view artifact ${artifactID}.` } });
-    return;
+    
+    // return data if authorized
+    const artisan = await db.collection('Artisan').findOne({ _id: ObjectId(artifact.artisan) });
+    if (isAuthorized(artisan, id)) {
+      res.json({ success: true, artifact: artifact, msg: 'Successfully retrieve artifact.' });
+      return;
+    } else {
+      // error 401 user is not authorized
+      res.json({ success: false, error: { code: '401', msg: `You do not have permission to view artifact ${artifactID}.` } });
+      return;
+    }    
   } catch (err) {
     res.json({ success: false, error: { code: '400', msg: `Error: ${err}.` } });
     return;
@@ -1327,13 +1322,10 @@ app.post('/artifact/:artifactID', passport.authenticate('jwt', { session: false 
       return;
     }
 
-    // return data if artisan profile is public
     const artisan = await db.collection('Artisan').findOne({ _id: ObjectId(artifact.artisan) });
-    const isAdmirer = artisan.admirers.includes(ObjectId(user._id).toString());
 
-    // if artisan is the author or profile is public or user is an admirer
-    if (!artisan.private || isAdmirer || ObjectId(user._id).equals(ObjectId(artifact.artisan))) {
-      // error 409 if user is already admiring this artifact
+    // if user is authorized
+    if (isAuthorized(artisan, user._id)) {
       const admiring = artifact.admirers.includes(ObjectId(user._id).toString());
       const favoriting = user.favorites.includes(artifactID);
 
@@ -1353,11 +1345,94 @@ app.post('/artifact/:artifactID', passport.authenticate('jwt', { session: false 
         res.json({ success: true, msg: 'Successfully admired artifact.' });
         return;
       }
-    }
-
-    // error 401 if not permitted
-    res.json({ success: false, error: { code: '401', msg: 'You do not have permission to admire this artifact.' }});
+    } else {
+      // error 401 if not permitted
+      res.json({ success: false, error: { code: '401', msg: 'You do not have permission to admire this artifact.' }});
+      return;
+    }   
+  } catch (err) {
+    res.json({ success: false, error: { code: '400', msg: `Error: ${err}.` } });
     return;
+  }
+});
+
+// get comments of artifact
+app.get('/artifact/:artifactID/comment', async (req, res) => {
+  const { artifactID } = req.params;
+  
+  try {
+    const artifact = await db.collection('Artifact').findOne({ _id: ObjectId(artifactID) });
+    // error 404 if artifact does not exist
+    if (!artifact) {
+      res.json({ success: false, error: { code: '404', msg: 'Artifact does not exist' }});
+      return;
+    }
+    
+    // if artisan profile is not public, check authorization details
+    const { authorization } = req.headers;
+    let id = '';
+    if (authorization && authorization.split(' ')[0] === 'Bearer') {
+      const token = authorization.split(' ')[1];
+      // id of logged-in user
+      id = jwt.verify(token, process.env.JWT_KEY).id;
+    }
+    
+    // return comments data if authorized
+    const artisan = await db.collection('Artisan').findOne({ _id: ObjectId(artifact.artisan) });
+    if (isAuthorized(artisan, id)) {
+      // get comments sorted by time
+      const comments = await db.collection('Comment').find({ post : ObjectId(artifactID) }).sort({ date: -1 }).toArray();
+      res.json({ success: true, comments: comments, msg: 'Successfully retrieve comments.' });
+      return;
+    } else {
+      // error 401 user is not authorized
+      res.json({ success: false, error: { code: '401', msg: `You do not have permission to view artifact ${artifactID}.` } });
+      return;
+    }    
+  } catch (err) {
+    res.json({ success: false, error: { code: '400', msg: `Error: ${err}.` } });
+    return;
+  }
+});
+
+// post comment on artifact
+app.post('/artifact/:artifactID/comment', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { text } = req.body;
+  const { artifactID } = req.params;
+  const user = req.user;
+
+  if (text.length > 250) {
+    res.json({ success: false, error: { code: '400', msg: 'Comment length too long.' }});
+    return;
+  }
+
+  try {
+    const artifact = await db.collection('Artifact').findOne({ _id: ObjectId(artifactID) });
+    // error 404 if artifact does not exist
+    if (!artifact) {
+      res.json({ success: false, error: { code: '404', msg: 'Artifact does not exist' }});
+      return;
+    }
+    
+    const artisan = await db.collection('Artisan').findOne({ _id: ObjectId(artifact.artisan) });
+    if (isAuthorized(artisan, user._id)) {
+      const comment = {
+        post: ObjectId(artifactID),
+        type: 'Artifact',
+        author: user._id,
+        likes: 0,
+        date: new Date(),
+        text: text,
+      };
+      
+      await db.collection('Comment').insertOne(comment);
+      res.json({ success: true, comment: comment, msg: 'Successfully commented.' });
+      return;
+    } else {
+      // error 401 user is not authorized
+      res.json({ success: false, error: { code: '401', msg: 'You do not have permission to comment.' } });
+      return;
+    }    
   } catch (err) {
     res.json({ success: false, error: { code: '400', msg: `Error: ${err}.` } });
     return;
