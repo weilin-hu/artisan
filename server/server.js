@@ -1251,7 +1251,7 @@ app.post('/artifact', passport.authenticate('jwt', { session: false }), async (r
       artisan: user._id,
       url: url,
       title: title,
-      admirers: 0,
+      admirers: [],
       note: note,
       date: new Date(),
       tags: tags,
@@ -1271,14 +1271,15 @@ app.get('/artifact/:artifactID', async (req, res) => {
   const { artifactID } = req.params;
 
   try {
-    const artifact = db.collection('Artifact').findOne({ _id: ObjectId(artifactID) });
+    const artifact = await db.collection('Artifact').findOne({ _id: ObjectId(artifactID) });
+    // error 404 if artifact does not exist
     if (!artifact) {
-      res.json({ success: false, error: { code: '404', msg: 'Artifact does not exist' });
+      res.json({ success: false, error: { code: '404', msg: 'Artifact does not exist' }});
       return;
     }
 
     // return data if artisan profile is public
-    const artisan = db.collection('Artisan').findOne({ _id: ObjectId(artifact.artisan._id) });
+    const artisan = await db.collection('Artisan').findOne({ _id: ObjectId(artifact.artisan) });
     if (!artisan.private) {
       res.json({ success: true, artifact: artifact, msg: 'Successfully retrieve artifact data.' });
       return;
@@ -1297,7 +1298,7 @@ app.get('/artifact/:artifactID', async (req, res) => {
         return;
       }
 
-      const isAdmirer = await db.collection('Artisan').findOne({ _id: ObjectId(artifact.artisan), admirers: ObjectId(id) });
+      const isAdmirer = await db.collection('Artisan').findOne({ _id: ObjectId(artifact.artisan), admirers: ObjectId(id).toString() });
       if (isAdmirer) {
         res.json({ success: true, artifact: artifact, msg: 'Successfully retrieve artifact.' });
         return;
@@ -1306,6 +1307,56 @@ app.get('/artifact/:artifactID', async (req, res) => {
       
     // error 401 user is not an admirer
     res.json({ success: false, error: { code: '401', msg: `You do not have permission to view artifact ${artifactID}.` } });
+    return;
+  } catch (err) {
+    res.json({ success: false, error: { code: '400', msg: `Error: ${err}.` } });
+    return;
+  }
+});
+
+// like or unlike artifact 
+app.post('/artifact/:artifactID', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { artifactID } = req.params;
+  const user = req.user;
+
+  try {
+    const artifact = await db.collection('Artifact').findOne({ _id: ObjectId(artifactID) });
+    // error 404 if artifact does not exist
+    if (!artifact) {
+      res.json({ success: false, error: { code: '404', msg: 'Artifact does not exist.' } });
+      return;
+    }
+
+    // return data if artisan profile is public
+    const artisan = await db.collection('Artisan').findOne({ _id: ObjectId(artifact.artisan) });
+    const isAdmirer = artisan.admirers.includes(ObjectId(user._id).toString());
+
+    // if artisan is the author or profile is public or user is an admirer
+    if (!artisan.private || isAdmirer || ObjectId(user._id).equals(ObjectId(artifact.artisan))) {
+      // error 409 if user is already admiring this artifact
+      const admiring = artifact.admirers.includes(ObjectId(user._id).toString());
+      const favoriting = user.favorites.includes(artifactID);
+
+      // if user can only unlike
+      if (admiring || favoriting) {
+        // remove artisan from admirers of Artifact and remove artifact from favorites of artisan
+        await db.collection('Artifact').updateOne({ _id: ObjectId(artifactID) }, { $pull: { admirers: ObjectId(user._id).toString() } });  
+        await db.collection('Artisan').updateOne({ _id: ObjectId(user._id) }, { $pull: { favorites: artifactID } });
+        res.json({ success: true, msg: 'Successfully removed from admiring.' });
+        return;
+        
+        // else if user can only like
+      } else {
+        // add artisan to admirers of Artifact and add artifact to favorites of artisan
+        await db.collection('Artifact').updateOne({ _id: ObjectId(artifactID) }, { $push: { admirers: ObjectId(user._id).toString() } });  
+        await db.collection('Artisan').updateOne({ _id: ObjectId(user._id) }, { $push: { favorites: artifactID } });
+        res.json({ success: true, msg: 'Successfully admired artifact.' });
+        return;
+      }
+    }
+
+    // error 401 if not permitted
+    res.json({ success: false, error: { code: '401', msg: 'You do not have permission to admire this artifact.' }});
     return;
   } catch (err) {
     res.json({ success: false, error: { code: '400', msg: `Error: ${err}.` } });
