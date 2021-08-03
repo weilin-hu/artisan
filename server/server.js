@@ -1483,7 +1483,7 @@ app.get('/artifact/:artifactID/comment/:commentID', async (req, res) => {
   }
 });
 
-// like comment
+// like or unlike comment
 app.post('/artifact/:artifactID/comment/:commentID', passport.authenticate('jwt', { session: false }), async (req, res) => {
   const { artifactID, commentID } = req.params;
   const user = req.user;
@@ -1529,6 +1529,203 @@ app.post('/artifact/:artifactID/comment/:commentID', passport.authenticate('jwt'
     return;
   }
 });
+
+// view subcomments
+app.get('/artifact/:artifactID/comment/:commentID/subcomment', async (req, res) => {
+  const { artifactID, commentID } = req.params;
+
+  try {
+    // error 404 if artifact does not exist
+    const artifact = await db.collection('Artifact').findOne({ _id: ObjectId(artifactID) });
+    if (!artifact) {
+      res.json({ success: false, error: { code: '404', msg: 'Artifact does not exist.' }});
+      return;
+    }
+
+    // error 404 if comment does not exist or is not on given artifact
+    const comment = await db.collection('Comment').findOne({ _id: ObjectId(commentID) });
+    if (!comment || !ObjectId(comment.post).equals(ObjectId(artifactID))) {
+      res.json({ success: false, error: { code: '404', msg: 'Comment does not exist.' }});
+      return;
+    }
+
+    // if artisan profile is not public, check authorization details
+    const { authorization } = req.headers;
+    let id = '';
+    if (authorization && authorization.split(' ')[0] === 'Bearer') {
+      const token = authorization.split(' ')[1];
+      id = jwt.verify(token, process.env.JWT_KEY).id;
+    }
+    
+    // return comment data if authorized
+    const artisan = await db.collection('Artisan').findOne({ _id: ObjectId(artifact.artisan) });
+    if (isAuthorized(artisan, id)) {
+      // get subcomments sorted by time
+      const subcomments = await db.collection('Subcomment').find({ comment : ObjectId(commentID) }).sort({ date: -1 }).toArray();
+      res.json({ success: true, subcomments: subcomments, msg: 'Successfully retrieve subcomments.' });
+      return;
+    } else {
+      res.json({ success: false, error: { code: '401', msg: `You do not have permission to view subcomments.` } });
+      return;
+    }
+  } catch (err) {
+    res.json({ success: false, error: { code: '400', msg: `Error: ${err}.` } });
+    return;
+  }
+});
+
+// post subcomment on comment
+app.post('/artifact/:artifactID/comment/:commentID/subcomment', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { text } = req.body;
+  const { artifactID, commentID } = req.params;
+  const user = req.user;
+
+  if (text.length > 250) {
+    res.json({ success: false, error: { code: '400', msg: 'Comment length too long.' }});
+    return;
+  }
+
+  try {
+    const artifact = await db.collection('Artifact').findOne({ _id: ObjectId(artifactID) });
+    if (!artifact) {
+      res.json({ success: false, error: { code: '404', msg: 'Artifact does not exist' }});
+      return;
+    }
+    
+    const comment = await db.collection('Comment').findOne({ _id: ObjectId(commentID) });
+    if (!comment || !ObjectId(comment.post).equals(ObjectId(artifactID))) {
+      res.json({ success: false, error: { code: '404', msg: 'Comment does not exist.' }});
+      return;
+    }
+
+    const artisan = await db.collection('Artisan').findOne({ _id: ObjectId(artifact.artisan) });
+    if (isAuthorized(artisan, user._id)) {
+      const subcomment = {
+        comment: ObjectId(commentID),
+        author: user._id,
+        likes: [],
+        date: new Date(),
+        text: text,
+      };
+      
+      await db.collection('Subcomment').insertOne(subcomment);
+      res.json({ success: true, subcomment: subcomment, msg: 'Successfully commented.' });
+      return;
+    } else {
+      // error 401 user is not authorized
+      res.json({ success: false, error: { code: '401', msg: 'You do not have permission to comment.' } });
+      return;
+    }    
+  } catch (err) {
+    res.json({ success: false, error: { code: '400', msg: `Error: ${err}.` } });
+    return;
+  }
+});
+
+// view comment (might not need this)
+app.get('/artifact/:artifactID/comment/:commentID/subcomment/:subcommentID', async (req, res) => {
+  const { artifactID, commentID, subcommentID } = req.params;
+
+  try {s
+    const artifact = await db.collection('Artifact').findOne({ _id: ObjectId(artifactID) });
+    if (!artifact) {
+      res.json({ success: false, error: { code: '404', msg: 'Artifact does not exist.' }});
+      return;
+    }
+
+    const comment = await db.collection('Comment').findOne({ _id: ObjectId(commentID) });
+    if (!comment || !ObjectId(comment.post).equals(ObjectId(artifactID))) {
+      res.json({ success: false, error: { code: '404', msg: 'Comment does not exist.' }});
+      return;
+    }
+
+    const subcomment = await db.collection('Subcomment').findOne({ _id: ObjectId(subcommentID) });
+    if (!subcomment || !ObjectId(subcomment.comment).equals(ObjectId(commentID))) {
+      res.json({ success: false, error: { code: '404', msg: 'Subcomment does not exist.' }});
+      return;
+    }
+
+    // if artisan profile is not public, check authorization details
+    const { authorization } = req.headers;
+    let id = '';
+    if (authorization && authorization.split(' ')[0] === 'Bearer') {
+      const token = authorization.split(' ')[1];
+      // id of logged-in user
+      id = jwt.verify(token, process.env.JWT_KEY).id;
+    }
+    
+    // return comment data if authorized
+    const artisan = await db.collection('Artisan').findOne({ _id: ObjectId(artifact.artisan) });
+    if (isAuthorized(artisan, id)) {
+      res.json({ success: true, subcomment: subcomment, msg: 'Successfully retrieve subcomment.' });
+      return;
+    } else {
+      // error 401 user is not authorized
+      res.json({ success: false, error: { code: '401', msg: `You do not have permission to view subcomment ${subcommentID}.` } });
+      return;
+    }
+  } catch (err) {
+    res.json({ success: false, error: { code: '400', msg: `Error: ${err}.` } });
+    return;
+  }
+});
+
+// like or unlike comment
+app.post('/artifact/:artifactID/comment/:commentID/subcomment/:subcommentID', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { artifactID, commentID, subcommentID } = req.params;
+  const user = req.user;
+
+  try {
+    const artifact = await db.collection('Artifact').findOne({ _id: ObjectId(artifactID) });
+    if (!artifact) {
+      res.json({ success: false, error: { code: '404', msg: 'Artifact does not exist.' } });
+      return;
+    }
+
+    const comment = await db.collection('Comment').findOne({ _id: ObjectId(commentID) });
+    if (!comment || !ObjectId(comment.post).equals(ObjectId(artifactID))) {
+      res.json({ success: false, error: { code: '404', msg: 'Comment does not exist.' }});
+      return;
+    }
+
+    const subcomment = await db.collection('Subcomment').findOne({ _id: ObjectId(subcommentID) });
+    if (!subcomment || !ObjectId(subcomment.comment).equals(ObjectId(commentID))) {
+      res.json({ success: false, error: { code: '404', msg: 'Subcomment does not exist.' }});
+      return;
+    }
+
+    const artisan = await db.collection('Artisan').findOne({ _id: ObjectId(artifact.artisan) });
+    if (isAuthorized(artisan, user._id)) {
+      const isLiked = subcomment.likes.includes(ObjectId(user._id).toString());
+
+      if (isLiked) {
+        await db.collection('Subcomment').updateOne({ _id: ObjectId(subcommentID) }, { $pull: { likes: ObjectId(user._id).toString() } });  
+        res.json({ success: true, msg: 'Successfully unliked comment.' });
+        return;        
+      } else {
+        await db.collection('Subcomment').updateOne({ _id: ObjectId(subcommentID) }, { $push: { likes: ObjectId(user._id).toString() } });  
+        res.json({ success: true, msg: 'Successfully liked comment.' });
+        return;
+      }
+    } else {
+      res.json({ success: false, error: { code: '401', msg: 'You do not have permission to like this comment.' }});
+      return;
+    }   
+  } catch (err) {
+    res.json({ success: false, error: { code: '400', msg: `Error: ${err}.` } });
+    return;
+  }
+});
+
+/** ---------------------
+ * ARTIFACT ROUTES 
+ * ---------------------- 
+ */
+app.get('/artisan/:artisanID', async (req, res) => {
+
+});
+
+
 
 // Root endpoint
 // app.get('*', (req, res) => {
