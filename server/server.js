@@ -1388,7 +1388,7 @@ app.get('/artifact/:artifactID/comment', async (req, res) => {
       // error 401 user is not authorized
       res.json({ success: false, error: { code: '401', msg: `You do not have permission to view artifact ${artifactID}.` } });
       return;
-    }    
+    }
   } catch (err) {
     res.json({ success: false, error: { code: '400', msg: `Error: ${err}.` } });
     return;
@@ -1420,7 +1420,7 @@ app.post('/artifact/:artifactID/comment', passport.authenticate('jwt', { session
         post: ObjectId(artifactID),
         type: 'Artifact',
         author: user._id,
-        likes: 0,
+        likes: [],
         date: new Date(),
         text: text,
       };
@@ -1433,6 +1433,97 @@ app.post('/artifact/:artifactID/comment', passport.authenticate('jwt', { session
       res.json({ success: false, error: { code: '401', msg: 'You do not have permission to comment.' } });
       return;
     }    
+  } catch (err) {
+    res.json({ success: false, error: { code: '400', msg: `Error: ${err}.` } });
+    return;
+  }
+});
+
+// view comment (might not need this)
+app.get('/artifact/:artifactID/comment/:commentID', async (req, res) => {
+  const { artifactID, commentID } = req.params;
+
+  try {
+    // error 404 if artifact does not exist
+    const artifact = await db.collection('Artifact').findOne({ _id: ObjectId(artifactID) });
+    if (!artifact) {
+      res.json({ success: false, error: { code: '404', msg: 'Artifact does not exist.' }});
+      return;
+    }
+
+    // error 404 if comment does not exist or is not on given artifact
+    const comment = await db.collection('Comment').findOne({ _id: ObjectId(commentID) });
+    if (!comment || !ObjectId(comment.post).equals(ObjectId(artifactID))) {
+      res.json({ success: false, error: { code: '404', msg: 'Comment does not exist.' }});
+      return;
+    }
+
+    // if artisan profile is not public, check authorization details
+    const { authorization } = req.headers;
+    let id = '';
+    if (authorization && authorization.split(' ')[0] === 'Bearer') {
+      const token = authorization.split(' ')[1];
+      // id of logged-in user
+      id = jwt.verify(token, process.env.JWT_KEY).id;
+    }
+    
+    // return comment data if authorized
+    const artisan = await db.collection('Artisan').findOne({ _id: ObjectId(artifact.artisan) });
+    if (isAuthorized(artisan, id)) {
+      res.json({ success: true, comment: comment, msg: 'Successfully retrieve comment.' });
+      return;
+    } else {
+      // error 401 user is not authorized
+      res.json({ success: false, error: { code: '401', msg: `You do not have permission to view comment ${commentID}.` } });
+      return;
+    }
+  } catch (err) {
+    res.json({ success: false, error: { code: '400', msg: `Error: ${err}.` } });
+    return;
+  }
+});
+
+// like comment
+app.post('/artifact/:artifactID/comment/:commentID', passport.authenticate('jwt', { session: false }), async (req, res) => {
+  const { artifactID, commentID } = req.params;
+  const user = req.user;
+
+  try {
+    const artifact = await db.collection('Artifact').findOne({ _id: ObjectId(artifactID) });
+    // error 404 if artifact does not exist
+    if (!artifact) {
+      res.json({ success: false, error: { code: '404', msg: 'Artifact does not exist.' } });
+      return;
+    }
+
+    // error 404 if comment does not exist or is not on given artifact
+    const comment = await db.collection('Comment').findOne({ _id: ObjectId(commentID) });
+    if (!comment || !ObjectId(comment.post).equals(ObjectId(artifactID))) {
+      res.json({ success: false, error: { code: '404', msg: 'Comment does not exist.' }});
+      return;
+    }
+
+    const artisan = await db.collection('Artisan').findOne({ _id: ObjectId(artifact.artisan) });
+
+    // if user is authorized
+    if (isAuthorized(artisan, user._id)) {
+      const isLiked = comment.likes.includes(ObjectId(user._id).toString());
+
+      if (isLiked) {
+        // remove user from likes list
+        await db.collection('Comment').updateOne({ _id: ObjectId(commentID) }, { $pull: { likes: ObjectId(user._id).toString() } });  
+        res.json({ success: true, msg: 'Successfully unliked comment.' });
+        return;        
+      } else {
+        // add user to likes list
+        await db.collection('Comment').updateOne({ _id: ObjectId(commentID) }, { $push: { likes: ObjectId(user._id).toString() } });  
+        res.json({ success: true, msg: 'Successfully liked coment.' });
+        return;
+      }
+    } else {
+      res.json({ success: false, error: { code: '401', msg: 'You do not have permission to like this comment.' }});
+      return;
+    }   
   } catch (err) {
     res.json({ success: false, error: { code: '400', msg: `Error: ${err}.` } });
     return;
