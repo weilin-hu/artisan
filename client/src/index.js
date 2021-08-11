@@ -18,12 +18,12 @@ const colors = {
     700: "#2a69ac",
   },
 }
-const theme = extendTheme({ colors })
+// const theme = extendTheme({ colors })
 
 ReactDOM.render(
-  <ChakraProvider theme={theme}>
+  <ChakraProvider>
   <BrowserRouter>
-    <Test />
+    <ForgotLogin />
     <Switch>
       <Route path='/home'>
         <App />
@@ -33,6 +33,9 @@ ReactDOM.render(
       </Route>
       <Route path='/register'>
         <Registration />
+      </Route>
+      <Route path='/login'>
+        <Login />
       </Route>
     </Switch>
   </BrowserRouter>

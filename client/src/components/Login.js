@@ -4,8 +4,16 @@ import { postFetch } from './../fetch/auth';
 
 import './Login.css';
 
-import { BsArrowBarLeft } from 'react-icons/bs';
-import { VscSignIn } from "react-icons/vsc";
+import { BsArrowBarLeft, BsEyeSlash, BsEye } from 'react-icons/bs';
+import { VscSignIn } from 'react-icons/vsc';
+import { Box, Button, Input, Flex, InputGroup, InputRightElement } from '@chakra-ui/react';
+import { Formik, Form } from 'formik';
+
+const inputStyle = {
+  color: '#ffffff7e',
+  letterSpacing: 2,
+  opacity: '60%',
+}
 
 /**
  * TODO: make Login button text stay on one line when zooming in 
@@ -14,11 +22,10 @@ import { VscSignIn } from "react-icons/vsc";
 const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const { push } = useHistory();
+  const [show, setShow] = useState(false);
 
-  const goToArtisan = () => {
-    push('/home');
-  };
+  const handleShow = () => setShow(!show);
+  const { push } = useHistory();
 
   const login = async (e) => {
     e.preventDefault();
@@ -34,6 +41,10 @@ const Login = () => {
     }
   };
 
+  const goToArtisan = () => {
+    push('/home');
+  };
+
   const forgotLogin = () => {
     push('/forgotLogin');
   };
@@ -43,40 +54,64 @@ const Login = () => {
   };
 
   return (
-    <div className='background'>
-      <div className='drawer'>
-        <div className='form-container'>
-          <div className='go-back' onClick={goToArtisan}>
+    <Box className='background'>
+      <Flex className='drawer'>
+        <Box>
+          <Flex className='back' onClick={goToArtisan}>
             <BsArrowBarLeft size='24'/>
-            <span>
+            <Box ml='2%' alignSelf='center' letterSpacing={1}>
               Go to Artisan
-            </span>
-          </div>
-          <div className='form-title'>
+            </Box>
+          </Flex>
+
+          <Box my={15} letterSpacing={3} color='white' fontSize='5xl' fontWeight='bold'>
             Log In
-          </div>
-          <div>
-            <input placeholder='Username' value = {username} onChange = {(e) => setUsername(e.target.value)}/>
-          </div>
-          <div>
-            <input placeholder='Password' type='password' value = {password} onChange = {(e) => setPassword(e.target.value)}/>
-          </div>
-          <button onClick={(e) => {login(e)}}>
-            <VscSignIn size='25px'/>
-            <span>Log In</span>
-          </button>
-          <div className='additional-options' onClick={forgotLogin}>
+          </Box>
+
+          <Formik onSubmit={(e) => login(e)}>
+            <Form>
+              <Input style={inputStyle} variant='flushed' focusBorderColor='#BD52FF' size='lg' placeholder='Username'
+                onChange={(e) => setUsername(e.target.value)}
+              />
+
+              <InputGroup>
+                <Input style={inputStyle} variant='flushed' focusBorderColor='#BD52FF' size='lg' my={6} type={show ? 'text' : 'password'} placeholder='Password'
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <InputRightElement onClick={handleShow} mt={8} color='#9d00ff' cursor='pointer' _hover={{ color: '#BD52FF'}} _active={{ color: '#bd52ff80' }}>
+                  {show ? <BsEyeSlash size={24}/> : <BsEye size={24}/>}
+                </InputRightElement>
+              </InputGroup>
+
+              <Button 
+                leftIcon={<VscSignIn color='FFA800' size={24}/>} 
+                colorScheme='blackAlpha' 
+                variant='outline' 
+                my={4}
+                size={'lg'}
+                color='#FFA800' 
+                backgroundColor='#00000033' 
+                _hover={{ backgroundColor: '#ffaa001c' }}
+                onClick={(e) => {login(e)}}
+              >
+                JOIN
+              </Button>
+            </Form>          
+          </Formik>
+
+          <Box className='additional-options' onClick={forgotLogin}>
             Forgot log in Information?
-          </div>
-          <div className='additional-options' onClick={register}>
+          </Box>
+          <Box className='additional-options' onClick={register}>
             New User?
-          </div>
-        </div>
-        <div className='user-agreement'>
+          </Box>
+
+        </Box>
+        <Box className='user-agreement'>
             By clicking Log In, I confirm that I have read and agree to the Artisan Terms of Service, Privacy Policy, and to receive emails and updates.
-        </div>
-      </div>
-    </div>
+        </Box>
+      </Flex>
+    </Box>
   );
 };
 

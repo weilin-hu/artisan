@@ -12,107 +12,37 @@
     letter-spacing: 1px;
 }
 
-.go-back {
+.back {
     color: #FFA800;
     cursor: pointer;
-    font-size: 16px;
-    display: flex;
+    font-size: medium;
 }
 
-.go-back:hover {
+.back:hover {
     color: #ffc400;
 }
 
-.go-back:active {
+.back:active {
     color: #FFA80081;
-}
-
-span {
-    margin-left: 2%;
-    align-self: center;
-    letter-spacing: 1px;
+    color: #00000033;
 }
 
 .drawer {
     padding: 2%;
-    display: flex;
+    width: 33%;
+    min-height: 100%;
+    position: fixed;
     flex-direction: column;
     justify-content: space-between;
-    background-color: rgba(0, 0, 0, 0.43);
-    min-height: 95%;
-    position: fixed;
-    width: 33%;
-}
-
-.form-container {
-    /* flex-direction: column; */
-}
-
-.form-title {
-    color: white;
-    margin: 15px 0;
-    font-size: 50px;
-    font-weight: bolder;
-    letter-spacing: 2px;
-}
-
-input {
-    font-size: large;
-    letter-spacing: 1px;
-    color:#ffffff7e;
-    width: 100%;
-    padding: 16px 28px;
-    box-sizing: border-box;
-    margin: 16px 0;
-    outline: none;
-    border-radius: 5px;
-    background-color: rgba(0, 0, 0, 0.1);
-    border: none;
-    font-family:Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
-}
-
-input::placeholder {
-    color:white;
-    opacity: 25%;
-}
-
-button {
-    display: flex;
-    cursor: pointer;
-    text-align: center;
-    justify-content: start;
-    width: 25%;
-
-    color: white;
-    background-color: #FFA800;
-
-    border-radius: 4px;
-    border: 0;
-    margin: 10px 0;
-    padding: 10px;
-
-    font-family:Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
-    font-size: large;
-}
-
-button:hover {
-    background-color: #ffb41d;
-}
-
-button:active {
-    background-color: #d68f00;
-}
-
-button:hover {
-    background-position: right center;
+    background-color: rgba(0, 0, 0, 0.40);
 }
 
 .additional-options {
     color: #BD52FF;
     cursor: pointer;
-    margin: 20px;
+    margin-top: 30px;
     text-align: center;
-    font-size: 16px;
+    font-size: medium;
 }
 
 .additional-options:hover {
@@ -120,10 +50,22 @@ button:hover {
 }
 
 .additional-options:active {
-    color:#bd52ff81;
+    opacity: 50%;
 }
 
 .user-agreement {
-    color: rgba(255, 255, 255, 0.4);
+    color: white;
+    opacity: 40%;
     text-align: center;
+    font-size: small;
+}
+
+.chakra-select-items {
+    background: black;
+}
+
+option {
+    background-color: #000;
+    margin: 4;
+    color: black;
 }

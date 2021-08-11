@@ -79,12 +79,34 @@ app.use(passport.initialize());
  * AUTHENTICATION ROUTES 
  * ---------------------- 
  */
+app.get('/user/:username', async(req, res) => {
+  const { username } = req.params;
+
+  try {
+    const user = await db.collection('Artisan').findOne({ username: username });
+    if (!user) {
+      res.json({ success: false });
+    } else {
+      res.json({ success: true });
+    }
+  } catch (err) {
+    res.json({ success: false, error: { code: '400', msg: `Error: ${err}.` } });
+    return;
+  }
+});
+
 app.post('/register', async (req, res) => {
   const { username, password, email, birth_month, birth_day, birth_year } = req.body;
 
   // error if all inputs not included
   if (!username || !password || !email || !birth_month || !birth_day || !birth_year) {
     res.json({success: false, error: {code: '400', msg: 'Request malformed: Please include all fields.' }});
+    return;
+  }
+
+  // error if email invalid
+  if (!email.match(/\S+@\S+\.\S+/)) {
+    res.json({success: false, error: {code: '400', msg: 'Email invalid.'}});
     return;
   }
 
@@ -213,7 +235,7 @@ app.post('/forgotPassword', async (req, res) => {
 
   // error 404 if user with email doesn't exist
   if (!user) {
-    res.json({ success: false, error: { code: '404', msg: 'Username with specified username does not exist.' }});
+    res.json({ success: false, error: { code: '404', msg: 'Username not registered.' }});
     return;
   }
 
@@ -316,7 +338,7 @@ app.post('/forgotUsername', async (req, res) => {
 
   // error 404 if user does not exist
   if (!user) {
-    res.json({ success: false, error: { code: '404', msg: 'User with specified email does not exist.' }});
+    res.json({ success: false, error: { code: '404', msg: 'Email not registered.' }});
     return;
   }
 

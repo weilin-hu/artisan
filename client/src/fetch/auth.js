@@ -17,7 +17,7 @@ async function postFetch(URL, data) {
 }
 
 // /logout
-async function fetchLogout(URL) {
+async function getFetch(URL) {
   try {
     // GET fetch
     const response = await fetch(URL);
@@ -28,4 +28,4 @@ async function fetchLogout(URL) {
 }
 
 // module.exports = { fetchRegister, fetchLogin, fetchLogout };
-export { postFetch, fetchLogout };
+export { postFetch, getFetch };
