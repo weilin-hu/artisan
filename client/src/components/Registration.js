@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useHistory } from 'react-router-dom';
+import { useToast } from '@chakra-ui/react';
 import { postFetch, getFetch } from './../fetch/auth';
 
-import './Login.css';
+import './Auth.css';
 
-import { BsArrowBarLeft, BsClipboard, BsChevronDown, BsEyeSlash, BsEye, BsX, BsCheck } from 'react-icons/bs';
-
+import { BsArrowBarLeft, BsClipboard, BsChevronDown, BsExclamation, BsEyeSlash, BsEye, BsX, BsCheck } from 'react-icons/bs';
 import { Box, Button, Select, Input, Flex, InputGroup, InputRightElement } from '@chakra-ui/react';
 import { Formik, Form } from 'formik';
 
@@ -14,11 +14,18 @@ const days = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
 const year = new Date().getFullYear();
 const years = Array(120).fill().map((_, idx) => year - idx);
 
-const inputStyle = {
+const dateStyle = {
   color: 'white',
   letterSpacing: 2,
   opacity: '40%',
 }
+
+const inputStyle = {
+  color: '#ffffff7e',
+  letterSpacing: 2,
+  opacity: '70%',
+}
+
 
 const Registration = () => {
   const [username, setUsername] = useState('');
@@ -33,6 +40,7 @@ const Registration = () => {
   const [showConfirm, setShowConfirm] = useState(false);
   const handleShowPass = () => setShowPass(!showPass);
   const handleShowConfirm = () => setShowConfirm(!showConfirm);
+  const toast = useToast();
 
   const [userError, setUserError] = useState('');
   const [emailError, setEmailError] = useState('');
@@ -42,14 +50,32 @@ const Registration = () => {
 
   const register = async (e) => {
     e.preventDefault();
+    let hasError = false;
+    let msg = '';
 
-    if (password !== confirm) {
-      alert('Password and confirmed password must be the same');
-      return;
+    if (!username || !email || !password || !confirm || !month || !day || !year) {
+      hasError = true;
+      msg = 'Missing fields provided.'
+    } else if (password !== confirm) {
+      hasError = true;
+      msg = 'Password and confirm password are not identical.'
+    } else if (!password.match(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,50}$/)) {
+      hasError = true;
+      msg = 'Password should be 6 to 50 characters, contain at least one numeric digit, one uppercase, and one lowercase letter.'
     }
 
-    if (!password.match(/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,50}$/)) {
-      alert('Password should be 6 to 50 characters, contain at least one numeric digit, one uppercase, and one lowercase letter');
+    if (hasError) {      
+      toast({
+        position: 'top',
+        render: () => (
+          <Box className='error-toast'>
+            <BsExclamation size={24}/>
+            <Box>
+              {msg}
+            </Box>
+          </Box>
+        ),
+      });
       return;
     }
 
@@ -63,10 +89,32 @@ const Registration = () => {
     };
     const response = await postFetch('http://localhost:5000/register', data);
     if (!response.success) {
-      alert(`Registration Error: \n${response.error.msg}`);
-      return;
+      toast({
+        position: 'top',
+        render: () => (
+          <Box className='error-toast'>
+            <BsExclamation size={24}/>
+            <Box>
+              {response.error.msg}
+            </Box>
+          </Box>
+        ),
+      });
     } else {
-      alert(`Registered successfully with username ${username}!`);
+      toast({
+        position: 'top',
+        render: () => (
+          <Box className='success-toast'>
+            <BsCheck size={24}/>
+            <Box ml={'2%'}>
+              Registered new Artisan. 
+              <Box fontStyle='italic'>
+                Welcome {username}!
+              </Box>
+            </Box>
+          </Box>
+        ),
+      });
       push('/login');
     }
   };
@@ -168,13 +216,13 @@ const Registration = () => {
                 Birthday
               </Box>
               <Flex color='#ffffff7e' mt={-2}>
-                <Select style={inputStyle} flex={5} icon={<BsChevronDown/>} variant='flushed' focusBorderColor='#BD52FF' size='lg' mt={4} placeholder='Month' onChange={(e) => setMonth(e.target.value)}>
+                <Select style={dateStyle} flex={5} icon={<BsChevronDown/>} variant='flushed' focusBorderColor='#BD52FF' size='lg' mt={4} placeholder='Month' onChange={(e) => setMonth(e.target.value)}>
                   {months.map((month, idx) => <option key={idx}>{month}</option>)}
                 </Select>
-                <Select style={inputStyle} flex={3} icon={<BsChevronDown/>} variant='flushed' focusBorderColor='#BD52FF' size='lg' mt={4} placeholder='Day' onChange={(e) => setDay(e.target.value)}>
+                <Select style={dateStyle} flex={3} icon={<BsChevronDown/>} variant='flushed' focusBorderColor='#BD52FF' size='lg' mt={4} placeholder='Day' onChange={(e) => setDay(e.target.value)}>
                   {days.map((day, idx) => <option key={idx}>{day}</option>)}
                 </Select>
-                <Select style={inputStyle} flex={4} variant='flushed' icon={<BsChevronDown/>} focusBorderColor='#BD52FF' size='lg' mt={4} placeholder='Year' onChange={(e) => setYear(e.target.value)}>
+                <Select style={dateStyle} flex={4} variant='flushed' icon={<BsChevronDown/>} focusBorderColor='#BD52FF' size='lg' mt={4} placeholder='Year' onChange={(e) => setYear(e.target.value)}>
                   {years.map((year, idx) => <option key={idx}>{year}</option>)}
                 </Select>
               </Flex>
@@ -183,6 +231,8 @@ const Registration = () => {
                 my={8} 
                 size={'lg'}
                 color='#FFA800' 
+                letterSpacing={1.5}
+                fontWeight={'medium'}
                 backgroundColor='#00000033' 
                 _hover={{ backgroundColor: '#ffaa001c' }}
                 onClick={(e) => {register(e)}}

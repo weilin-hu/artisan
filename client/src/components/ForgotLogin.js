@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useHistory } from 'react-router-dom';
+import { useToast } from '@chakra-ui/react';
 import { postFetch } from './../fetch/auth';
 
-import './Login.css';
+import './Auth.css';
 
-import { BsArrowBarLeft, BsEnvelope } from 'react-icons/bs';
+import { BsArrowBarLeft, BsEnvelope, BsExclamation, BsCheck } from 'react-icons/bs';
 import { Box, Button, Input, Flex } from '@chakra-ui/react';
 
 const inputStyle = {
@@ -12,16 +13,11 @@ const inputStyle = {
   letterSpacing: 2,
   opacity: '60%',
 }
-/**
- * TODO: make Login button text stay on one line when zooming in 
- * @returns 
- */
 const ForgotLogin = () => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const toast = useToast();
 
-  const[error1, setError1] = useState('');
-  const[error2, setError2] = useState('');
   const { push } = useHistory();
 
   const login = () => {
@@ -34,9 +30,29 @@ const ForgotLogin = () => {
     const response = await postFetch('http://localhost:5000/forgotPassword', data);
 
     if (!response.success) {
-      setError1(response.error.msg);
+      toast({
+        position: 'top',
+        render: () => (
+          <Box className='error-toast'>
+            <BsExclamation size={24}/>
+            <Box>
+              {response.error.msg}
+            </Box>
+          </Box>
+        ),
+      })
     } else {
-      setError1('Email sent.');
+      toast({
+        position: 'top',
+        render: () => (
+          <Box className='success-toast'>
+            <BsCheck size={24}/>
+            <Box ml={'2%'}>
+              Email Sent
+            </Box>
+          </Box>
+        ),
+      });
     }
   };
 
@@ -46,9 +62,29 @@ const ForgotLogin = () => {
     const response = await postFetch('http://localhost:5000/forgotUsername', data);
 
     if (!response.success) {
-      setError2(response.error.msg);
+      toast({
+        position: 'top',
+        render: () => (
+          <Box className='error-toast'>
+            <BsExclamation size={24}/>
+            <Box>
+              {response.error.msg}
+            </Box>
+          </Box>
+        ),
+      })
     } else {
-      setError2('Email sent.');
+      toast({
+        position: 'top',
+        render: () => (
+          <Box className='success-toast'>
+            <BsCheck size={24}/>
+            <Box ml={'2%'}>
+              Email Sent
+            </Box>
+          </Box>
+        ),
+      });
     }
   };
 
@@ -70,7 +106,6 @@ const ForgotLogin = () => {
           <Input style={inputStyle} variant='flushed' focusBorderColor='#BD52FF' size='lg' placeholder='Username'
             onChange={(e) => setUsername(e.target.value)}
           />
-          <Box color='#BD52FF' opacity={'80%'} fontSize={14}>{error1}</Box>
 
           <Button leftIcon={<BsEnvelope color='BD52FF' size={18}/>} colorScheme='blackAlpha' variant='outline' 
             my={4}
@@ -92,7 +127,6 @@ const ForgotLogin = () => {
           <Input style={inputStyle} variant='flushed' focusBorderColor='#BD52FF' size='lg' placeholder='Email'
             onChange={(e) => setEmail(e.target.value)}
           />
-          <Box color='#BD52FF' opacity={'80%'} fontSize={14}>{error2}</Box>
 
           <Button leftIcon={<BsEnvelope color='BD52FF' size={18}/>} colorScheme='blackAlpha' variant='outline' 
             my={4}

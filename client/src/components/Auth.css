@@ -69,3 +69,25 @@ option {
     margin: 4;
     color: black;
 }
+
+.error-toast {
+    color:#FFA800;
+    font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
+    letter-spacing: 1.5px;
+    padding: 10px 20px;
+    background-color: #00000050;
+    text-align: center;
+    justify-content: center;
+    display: flex;
+}
+
+.success-toast {
+    color:#FFA800;
+    font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
+    letter-spacing: 1.5px;
+    padding: 10px 20px;
+    background-color: #00000050;
+    text-align: center;
+    justify-content: center;
+    display: flex;
+}

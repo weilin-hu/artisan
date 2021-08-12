@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useHistory } from 'react-router-dom';
+import { useToast } from '@chakra-ui/react';
 import { postFetch } from './../fetch/auth';
 
-import './Login.css';
+import './Auth.css';
 
-import { BsArrowBarLeft, BsEyeSlash, BsEye } from 'react-icons/bs';
+import { BsArrowBarLeft, BsEyeSlash, BsEye, BsExclamation } from 'react-icons/bs';
 import { VscSignIn } from 'react-icons/vsc';
 import { Box, Button, Input, Flex, InputGroup, InputRightElement } from '@chakra-ui/react';
 import { Formik, Form } from 'formik';
@@ -15,14 +16,11 @@ const inputStyle = {
   opacity: '60%',
 }
 
-/**
- * TODO: make Login button text stay on one line when zooming in 
- * @returns 
- */
 const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [show, setShow] = useState(false);
+  const toast = useToast();
 
   const handleShow = () => setShow(!show);
   const { push } = useHistory();
@@ -33,7 +31,17 @@ const Login = () => {
     const login = await postFetch('http://localhost:5000/login', data);
 
     if (!login.success) {
-      alert(`Login Error: \n${login.error.msg}`);
+      toast({
+        position: 'top',
+        render: () => (
+          <Box className='error-toast'>
+            <BsExclamation size={24}/>
+            <Box>
+              {login.error.msg}
+            </Box>
+          </Box>
+        ),
+      })
     } else {
       // save token in localStorage
       localStorage.setItem('token', login.token);
@@ -68,7 +76,7 @@ const Login = () => {
             Log In
           </Box>
 
-          <Formik onSubmit={(e) => login(e)}>
+          <Formik onSubmit={(e) => {login(e)}}>
             <Form>
               <Input style={inputStyle} variant='flushed' focusBorderColor='#BD52FF' size='lg' placeholder='Username'
                 onChange={(e) => setUsername(e.target.value)}
@@ -89,12 +97,14 @@ const Login = () => {
                 variant='outline' 
                 my={4}
                 size={'lg'}
+                letterSpacing={1.5}
+                fontWeight={'medium'}
                 color='#FFA800' 
                 backgroundColor='#00000033' 
                 _hover={{ backgroundColor: '#ffaa001c' }}
                 onClick={(e) => {login(e)}}
               >
-                JOIN
+                Log In
               </Button>
             </Form>          
           </Formik>

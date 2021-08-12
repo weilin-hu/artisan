@@ -186,7 +186,7 @@ app.post('/login', async (req, res) => {
     // error 404 if username not found in database
     const user = await db.collection('Artisan').findOne({ username: username });
     if (!user) {
-      res.json({ success: false, error: { code: '404', msg: 'Username with specified username does not exist.' }});
+      res.json({ success: false, error: { code: '404', msg: 'Username is not registered.' }});
       return;
     }
 
