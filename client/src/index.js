@@ -23,7 +23,7 @@ const colors = {
 ReactDOM.render(
   <ChakraProvider>
   <BrowserRouter>
-    <ForgotLogin />
+    <Test />
     <Switch>
       <Route path='/home'>
         <App />
