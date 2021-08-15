@@ -4,6 +4,7 @@ import Login from './components/Login';
 import Test from './Test';
 import App from './App';
 import ForgotLogin from './components/ForgotLogin';
+import Profile from './components/Profile';
 import Registration from './components/Registration';
 import { Switch, Route, BrowserRouter } from 'react-router-dom';
 
@@ -23,10 +24,10 @@ const colors = {
 ReactDOM.render(
   <ChakraProvider>
   <BrowserRouter>
-    <Test />
+    <Profile />
     <Switch>
       <Route path='/home'>
-        <App />
+        <Profile />
       </Route>
       <Route path='/forgotlogin'>
         <ForgotLogin />
