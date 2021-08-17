@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { useDisclosure } from "@chakra-ui/react"
+import { useDisclosure } from '@chakra-ui/react'
+import FeaturedGallery from './FeaturedGallery';
+import Details from './Profile/Details';
 import './Profile.css';
 
 import { 
@@ -10,14 +12,14 @@ import {
     RiUserHeartFill,
   } from 'react-icons/ri';
   
-  import { 
+  import {
     BsEnvelope,
+    BsExclamationOctagon,
     BsHeart,
     BsHeartHalf,
     BsHeartFill,
     BsThreeDots,
     BsEye,
-    BsExclamationOctagon,
   } from 'react-icons/bs';
   
   import {
@@ -26,10 +28,11 @@ import {
     VscCircleSlash,
   } from 'react-icons/vsc';
 
-import { 
+import {
     Box,
     Button,
     Center,
+    Divider,
     GridItem,
     Image,
     Menu,
@@ -316,27 +319,14 @@ const Profile = () => {
                     </Menu>
                 </Flex>
             </Flex>
-            <Box width='100%' height='100px' backgroundColor='#141414'>
+            <Flex>
+                <Box flex={2} width='100%' height='100px' backgroundColor='#141414'>
 
-            </Box>
-            <Box width='100%' height='100px' backgroundColor='#141414'>
-
-            </Box>
-            <Box width='100%' height='100px' backgroundColor='#141414'>
-
-            </Box>
-            <Box width='100%' height='100px' backgroundColor='#141414'>
-
-            </Box>
-            <Box width='100%' height='100px' backgroundColor='#141414'>
-
-            </Box>
-            <Box width='100%' height='100px' backgroundColor='#141414'>
-
-            </Box>
-            <Box width='100%' height='100px' backgroundColor='#141414'>
-
-            </Box>
+                </Box>
+                <Center p={2} flex={1} flexDirection='column' width='100%' alignSelf='center' justifyContent='center' height={'100%'} backgroundColor='#141414'>
+                    <Details />
+                </Center>
+            </Flex>
         </Box>
     );
 };
