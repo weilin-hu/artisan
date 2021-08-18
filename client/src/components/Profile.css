@@ -1,62 +1,72 @@
 body {
-    background-color: #1d1d1d;
+  background-color: #1d1d1d;
+  min-height: 100%;
+}
+
+*:focus {
+  box-shadow: none !important;
 }
 
 .profile-banner {
-    border-color: #ffa800;
-    border-style: solid;
-    border-top: none;
-    border-width: thin;
+  display: flex;
+  justify-content: space-evenly;
 
-    min-width: 200px;
-    height: 100px;
-    position: fixed;
+  border-color: #ffa800;
+  border-style: solid;
+  border-top: none;
+  border-width: 0.25vh;
+  border-radius: 0 0 0.5vh 0.5vh;
 
-    left: 50%;
-    transform: translate(-50%);
+  min-width: 12vw;
+  height: 12vh;
+  position: fixed;
+  z-index: 5;
+  padding: 2vh;
 
-    background-color: rgba(0, 0, 0, 0.5);
-    color: #ffa800;
+  left: 50%;
+  transform: translate(-50%);
 
-    border-radius: 0px 0px 8px 8px;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: #ffa800;
 
-    letter-spacing: 1.5px;
-    font-size: 20px;
-    font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
+  letter-spacing: 0.25vh;
+  font-size: 20px;
 }
 
-.profile-stats {
-    justify-content: space-between;
-    color: #ffa800;
-    border: 2px;
-    border-color: #ffa800;
-    width: 100%;
-    background: #000000c7;
-    padding: 4px;
-    height: 60px;
-    margin-top: -60px;
-}
+.profile-bar {
+  justify-content: space-between;
+  padding: 1vh;
 
-.profile-stat {
-    font-size: 20px;
-    font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
+  color: #ffa800;
+  background: #000000c7;
+
+  width: 100%;
+  height: 6vh;
+  margin-top: -6vh;
 }
 
 .profile-button {
-    cursor: pointer;
-    width: 40px;
-    margin: 6px;
-    padding: 8px;
-    border-color: #ffa800;
-    border-style: solid;
-    border-radius: 8px;
-    border-width: thin;
+  cursor: pointer;
+
+  width: 2.5vw;
+  margin: 0.75vh;
+  padding: 0.75vh 0.25vw;
+
+  border-color: #ffa800;
+  border-style: solid;
+  border-radius: 0.5vh;
+  border-width: 0.2vh;
 }
 
 .profile-button:hover {
-    background-color: #ffaa0040;
+  background-color: #ffaa0040;
 }
 
 .profile-button:active {
-    background-color: #ffaa0020;
+  background-color: #ffaa0020;
+}
+
+#tab {
+  color: #ffa800;
+  border-color: #ffa800;
 }

@@ -1,23 +1,6 @@
-import { useState } from 'react';
-import { useDisclosure } from '@chakra-ui/react'
-import Artifact from './Artifact';
-import './Profile.css';
-  
-import { 
-  BsEnvelope,
-  BsHeart,
-  BsHeartHalf,
-  BsHeartFill,
-  BsThreeDots,
-  BsEye,
-  BsExclamationOctagon,
-} from 'react-icons/bs';
+import '../Profile.css';
 
-import {
-  VscFlame,
-  VscBriefcase,
-  VscCircleSlash,
-} from 'react-icons/vsc';
+import Artifact from '../Artifact';
 
 import { 
   Box,
@@ -117,16 +100,14 @@ const artifacts = [
   }
 ];
 
-
 const FeaturedGallery = () => {
 
     return (
-        <Box backgroundColor='blackAlpha.600' padding={2}>
+        <Box backgroundColor='blackAlpha.600' padding='1vh'>
           <SimpleGrid
-            width='600px'
             rows={3} 
             columns={3}
-            spacing={2}
+            spacing='1vh'
           >
             {artifacts.map((artifact, idx) => 
               <Artifact key={idx} artifact={artifact}/>

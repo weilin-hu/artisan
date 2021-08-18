@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import FeaturedGallery from '../FeaturedGallery';
+import FeaturedGallery from './FeaturedGallery';
 
 import {
     Accordion,
@@ -14,48 +14,80 @@ import {
 
 const Details = () => {
 
-    return (
-      <Accordion allowMultiple width='100%'>
-        <AccordionItem color='#FFA800'>
-          <AccordionButton>
-            <AccordionIcon/>
-              <Box 
-                  flex='1'
-                  letterSpacing={2}
-                  fontSize={20}
-                  fontFamily='Georgia'
-              >
-                  Bio
-              </Box>
-            <AccordionIcon/>
-          </AccordionButton>
-          <AccordionPanel 
-              py={4} 
-              letterSpacing={2}
-              fontFamily='Georgia'
-          >
-              This is my bio. 🤣
-          </AccordionPanel>
-        </AccordionItem>
-
-        <AccordionItem color='#FFA800'>
-          <AccordionButton>
-            <AccordionIcon/>
+    return (  
+        <Accordion 
+          border='none'
+          minW='100%' 
+          h='66%' 
+          defaultIndex={[0, 1, 2]} 
+          allowMultiple
+        >
+          <AccordionItem color='#FFA800'>
+            <AccordionButton
+              _hover={{backgroundColor: '#ffaa0030'}}
+              _expanded={{backgroundColor: '#ffaa0020'}}
+            >
+              <AccordionIcon/>
               <Box 
                 flex='1'
-                letterSpacing={2}
-                fontSize={20}
-                fontFamily='Georgia'
+                letterSpacing='0.5vh'
+                fontSize='1.5vh'
               >
-                Featured Gallery
+                BIO
               </Box>
-            <AccordionIcon/>
-          </AccordionButton>
-          <AccordionPanel py={4}>
-            <FeaturedGallery />
-          </AccordionPanel>
-        </AccordionItem>
-      </Accordion>
+              <AccordionIcon/>
+            </AccordionButton>
+            <AccordionPanel
+              letterSpacing='0.2vh'
+              fontSize='1.5vh'
+            >
+              This is my bio. 🤣
+            </AccordionPanel>
+          </AccordionItem>
+
+          <AccordionItem color='#FFA800'>
+            <AccordionButton
+              _hover={{backgroundColor: '#ffaa0030'}}
+              _expanded={{backgroundColor: '#ffaa0020'}}
+            >
+              <AccordionIcon/>
+              <Box 
+                flex='1'
+                letterSpacing='0.5vh'
+                fontSize='1.5vh'
+              >
+                FEATURED GALLERY
+              </Box>
+              <AccordionIcon/>
+            </AccordionButton>
+            <AccordionPanel>
+              <FeaturedGallery />
+            </AccordionPanel>
+          </AccordionItem>
+
+          <AccordionItem color='#FFA800'>
+            <AccordionButton
+              _hover={{backgroundColor: '#ffaa0030'}}
+              _expanded={{backgroundColor: '#ffaa0020'}}
+            >
+              <AccordionIcon/>
+                <Box 
+                  flex='1'
+                  letterSpacing='0.5vh'
+                  fontSize='1.5vh'
+                >
+                  POPULAR ARTIFACTS
+                </Box>
+              <AccordionIcon/>
+            </AccordionButton>
+            <AccordionPanel
+              letterSpacing='0.2vh'
+              fontSize='1.5vh'
+            >
+              This is my bio. 🤣
+            </AccordionPanel>
+          </AccordionItem>
+        </Accordion>
     );
 };
 
