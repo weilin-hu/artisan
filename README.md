@@ -4,9 +4,6 @@ My love for art and feelings of defeat when my art piece does not look the way I
 
 This is my first large personal project, and I want to make it the best it can be. If you have suggestions or concerns, I would love to hear your thoughts! You can most conveniently reach me at `weilinhu@wharton.upenn.edu`.
 
-## Set up
-To see my progress so far, navigate to the root of the repo. Open two terminals and do the following:
-1. In the first terminal, navigate to the `server` folder with `cd server`. To start the server, simply write `npm start`. 
-2. In the second terminal, navigate to the `client` folder with `cd client`. To start the React App, write `npm start` again.
+To see my design progress so far, please visit the `pages` folder for images. I will hopefully deploy a 'fuller' app by end of this year!
 
 Enjoy! :)
