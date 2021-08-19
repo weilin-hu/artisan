@@ -2,10 +2,14 @@ import { useState } from 'react';
 
 import './Profile.css';
 
+import IconTooltip from './Profile/IconTooltip';
 import BlockModal from './Profile/BlockModal';
 import ReportModal from './Profile/ReportModal';
 import Details from './Profile/Details';
-import IconTooltip from './Profile/IconTooltip';
+import ProfileTab from './Profile/ProfileTab';
+import ExpoPanel from './Profile/ExpoPanel';
+import SketchbookPanel from './Profile/SketchbookPanel';
+import ActivityPanel from './Profile/ActivityPanel';
   
 import {
   BsEnvelope,
@@ -13,13 +17,7 @@ import {
   BsHeartHalf,
   BsHeartFill,
   BsThreeDots,
-  BsLayoutWtf,
-  BsViewList,
 } from 'react-icons/bs';
-
-import {
-  VscSplitHorizontal
-} from 'react-icons/vsc';
 
 import {
   Box,
@@ -163,54 +161,27 @@ const Profile = () => {
               isFitted 
               isLazy
             >
+
+              {/* TAB LIST  */}
               <TabList mb='1vh'>
-                <Tab 
-                  letterSpacing='0.5vh'
-                  color='#ffaa0080'
-                  borderColor='#7c5300'
-                  _active={{ color: '#ffa800', background: '#ffaa0040' }}
-                  _selected={{ color: '#ffa800', background: '#ffaa0020', borderColor: '#ffa800' }}
-                >
-                  <BsLayoutWtf size='2vh'/>
-                  <Text ml='1vh'>
-                    EXPO
-                  </Text>
-                </Tab>
-                <Tab
-                  letterSpacing='0.5vh'
-                  color='#ffaa0080'
-                  borderColor='#7c5300'
-                  _active={{ color: '#ffa800', background: '#ffaa0040' }}
-                  _selected={{ color: '#ffa800', background: '#ffaa0020', borderColor: '#ffa800' }}
-                >
-                  <VscSplitHorizontal size='2vh'/>
-                  <Text ml='1vh'>
-                    SKETCHBOOKS
-                  </Text>
-                </Tab>
-                <Tab 
-                  letterSpacing='0.5vh'
-                  color='#ffaa0080'
-                  borderColor='#7c5300'
-                  _active={{ color: '#ffa800', background: '#ffaa0040' }}
-                  _selected={{ color: '#ffa800', background: '#ffaa0020', borderColor: '#ffa800' }}
-                >
-                  <BsViewList size='2vh'/>
-                  <Text ml='1vh'>
-                    ACTIVITY
-                  </Text>
-                </Tab>
+                <ProfileTab label='EXPO'/>
+                <ProfileTab label='SKETCHBOOKS'/>
+                <ProfileTab label='ACTIVITY'/>
               </TabList>
+
               <TabPanels>
                 <TabPanel>
-                  <p>one!</p>
+                  <ExpoPanel />
                 </TabPanel>
                 <TabPanel>
-                  <p>two!</p>
+                  <SketchbookPanel />
                 </TabPanel>
+                <ActivityPanel />
               </TabPanels>
+              
             </Tabs>
           </Box>
+
           <Box 
             position='absolute'
             minH='67vh'

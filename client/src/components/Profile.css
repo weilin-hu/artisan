@@ -52,6 +52,8 @@ body {
   margin: 0.75vh;
   padding: 0.75vh 0.25vw;
 
+  color: #ffa800;
+
   border-color: #ffa800;
   border-style: solid;
   border-radius: 0.5vh;
@@ -66,7 +68,48 @@ body {
   background-color: #ffaa0020;
 }
 
-#tab {
-  color: #ffa800;
-  border-color: #ffa800;
+.sketchbook-preview {
+  cursor: pointer;
+
+  position: absolute;
+  flex-direction: column;
+  justify-content: space-evenly;
+  align-items: center;
+
+  background-color: #000000b7;
+  height: 100%;
+  width: 100%;
+}
+
+.sketchbook-preview-collapsed {
+  cursor: pointer;
+
+  flex-direction: column;
+  justify-content: space-evenly;
+  align-items: center;
+  z-index: 1;
+
+  background-color: #000000b7;
+  margin-top: -10vh;
+  height: 10vh;
+  width: 100%;
+}
+
+.sketchbook-preview-title {
+  margin: 0vh 2vh;
+  max-width: 15vw;
+
+  color: #ffffffe3;
+  font-weight: lighter;
+  font-size: 2vh;
+  letter-spacing: 0.3vh;
+}
+
+.sketchbook-preview-last-modified {
+  color: #bd52ffaa;
+
+  text-align: center;
+  letter-spacing: 0.2vh;
+  font-style: italic;
+  font-size: 1.5vh;
 }
