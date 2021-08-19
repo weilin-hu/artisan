@@ -9,4 +9,4 @@ To see my progress so far, navigate to the root of the repo. Open two terminals 
 1. In the first terminal, navigate to the `server` folder with `cd server`. To start the server, simply write `npm start`. 
 2. In the second terminal, navigate to the `client` folder with `cd client`. To start the React App, write `npm start` again.
 
-
+Enjoy! :)
