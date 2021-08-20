@@ -26,10 +26,10 @@ const IconTooltip = ({label, stat}) => {
       placement='bottom'
       letterSpacing='.2vh'
       backgroundColor='#ffaa0040'
-      color='#ffa800'
+      color='#ffffffaa'
       fontWeight='normal'
     >
-      <Center m='2vh'>
+      <Center m='2vh' color='#d89000' _hover={{ color: '#ffa800' }}>
         {label === 'Views' ? <BsEye size='3vh'/> : <></>}
         {label === 'Reputation' ? <VscFlame size='3vh'/> : <></>}
         {label === 'Artifacts' ? <VscBriefcase size='3vh'/> : <></>}
@@ -38,7 +38,7 @@ const IconTooltip = ({label, stat}) => {
         <Box 
           ml='1.5vh'
           letterSpacing='.15vh'
-          fontSize='2vh'
+          fontSize='1.85vh'
         >
           {stat}
         </Box>

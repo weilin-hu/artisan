@@ -34,10 +34,11 @@ body {
 }
 
 .profile-bar {
+  text-transform: uppercase;
+
   justify-content: space-between;
   padding: 1vh;
 
-  color: #ffa800;
   background: #000000c7;
 
   width: 100%;
@@ -52,20 +53,20 @@ body {
   margin: 0.75vh;
   padding: 0.75vh 0.25vw;
 
-  color: #ffa800;
-
-  border-color: #ffa800;
+  color: #d89000;
+  border-color: #d89000;
   border-style: solid;
   border-radius: 0.5vh;
   border-width: 0.2vh;
 }
 
 .profile-button:hover {
-  background-color: #ffaa0040;
+  color: #ffa800;
+  border-color: #ffa800;
 }
 
 .profile-button:active {
-  background-color: #ffaa0020;
+  background-color: #00000066;
 }
 
 .sketchbook-preview {
@@ -76,7 +77,7 @@ body {
   justify-content: space-evenly;
   align-items: center;
 
-  background-color: #000000b7;
+  background-color: #00000067;
   height: 100%;
   width: 100%;
 }
@@ -95,21 +96,80 @@ body {
   width: 100%;
 }
 
+.sketchbook-preview-stats {
+  margin-left: 1.5vh;
+  font-size: 1.5vh;
+
+  letter-spacing: 0.15vh;
+  text-transform: uppercase;
+}
+
 .sketchbook-preview-title {
   margin: 0vh 2vh;
   max-width: 15vw;
 
   color: #ffffffe3;
   font-weight: lighter;
-  font-size: 2vh;
+  font-size: 2.75vh;
   letter-spacing: 0.3vh;
 }
 
+.sketchbook-preview-date {
+  color: #704040c3;
+
+  letter-spacing: 0.2vh;
+  font-size: 1.5vh;
+}
+
+.sketchbook-preview-date-created {
+  color: #ffffff85;
+
+  margin-top: 0.4vh;
+
+  letter-spacing: 0.2vh;
+  font-style: italic;
+  font-size: 1.35vh;
+}
+
 .sketchbook-preview-last-modified {
-  color: #bd52ffaa;
+  color: #bd52ffc0;
 
   text-align: center;
   letter-spacing: 0.2vh;
   font-style: italic;
   font-size: 1.5vh;
+}
+
+.pages-scroll {
+  overflow: auto;
+
+  flex-direction: column;
+  max-height: 90vh;
+
+  cursor: pointer;
+
+  scrollbar-width: thin;
+  scrollbar-color: #ffa80080 #00000030;
+}
+
+.pages-scroll::-webkit-scrollbar {
+  width: 1vw;
+}
+
+.pages-scroll::-webkit-scrollbar-track {
+  background: #00000077;
+}
+
+.pages-scroll::-webkit-scrollbar-thumb {
+  background-color: #ffffff50;
+  border-radius: 0.25vh;
+  border: 0.5vh solid #000000;
+}
+
+.pages-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: #ffa800aa;
+}
+
+.pages-scroll::-webkit-scrollbar-thumb:active {
+  background-color: #ffaa0075;
 }

@@ -24,7 +24,7 @@ const colors = {
 ReactDOM.render(
   <ChakraProvider>
   <BrowserRouter>
-    <Profile />
+    <></>
     <Switch>
       <Route path='/home'>
         <Profile />

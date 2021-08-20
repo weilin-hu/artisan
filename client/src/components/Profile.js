@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getNum } from './functions/helper'
 
 import './Profile.css';
 
@@ -14,7 +15,6 @@ import ActivityPanel from './Profile/ActivityPanel';
 import {
   BsEnvelope,
   BsHeart,
-  BsHeartHalf,
   BsHeartFill,
   BsThreeDots,
 } from 'react-icons/bs';
@@ -27,7 +27,6 @@ import {
   MenuButton,
   MenuList,
   Tabs,
-  Tab,
   TabList,
   TabPanel,
   TabPanels,
@@ -64,44 +63,41 @@ const Profile = () => {
     return (
       <Box>
         {/* PROFILE BANNER */}
-        <Center
-                className='profile-banner'
-                onClick={(e) => hover(e)}
-            >
-                <Image
-                    src='https://i.redd.it/armojo64gc031.jpg'
-                    boxSize='10vh'
-                    objectFit='cover'
-                    borderRadius='.5vh'
-                />
-                <Text 
-                    ml='2vh' 
-                    fontSize='2vh' 
-                    maxWidth='36vh' 
-                    isTruncated
-                >
-                    lonalonalonalonalonalonalonalonalonalonalonalonalonalonalonalonalonalona
-                </Text>
-            </Center>
+        <Center className='profile-banner' onClick={(e) => hover(e)}>
+          <Image
+              src='https://i.redd.it/armojo64gc031.jpg'
+              boxSize='10vh'
+              objectFit='cover'
+              borderRadius='.5vh'
+          />
+          <Text 
+              ml='2vh' 
+              fontSize='2vh' 
+              maxWidth='36vh' 
+              isTruncated
+          >
+              lona
+          </Text>
+        </Center>
         
         {/* COVER PHOTO */}
         <Image 
-            src='https://pbs.twimg.com/media/E760wo8VEAAqmyG.jpg' 
-                alt='Dead Dreams'
-                width='100%'
-                height='33vh'
-                zIndex={-1}
-                objectFit='cover'
+            src='https://pbs.twimg.com/media/EzOzJfkVUAQ1jKz.jpg' 
+            alt='Dead Dreams'
+            width='100%'
+            height='33vh'
+            zIndex={-1}
+            objectFit='cover'
         />
 
         <Flex className='profile-bar' bg='blackAlpha.700' position='absolute'>
           {/* PROFILE STATS */}
           <Flex>
-            <IconTooltip label='Views' stat='1,053'/>
-            <IconTooltip label='Reputation' stat='50.3K'/>
-            <IconTooltip label='Artifacts' stat='143'/>
-            <IconTooltip label='Admirers' stat='53'/>
-            <IconTooltip label='Admiring' stat='265'/>
+            <IconTooltip label='Views' stat={getNum(2363232)}/>
+            <IconTooltip label='Reputation' stat={getNum(85475473)}/>
+            <IconTooltip label='Artifacts' stat={getNum(143)}/>
+            <IconTooltip label='Admirers' stat={getNum(51290)}/>
+            <IconTooltip label='Admiring' stat={getNum(1424)}/>
           </Flex>
 
           <Center >
@@ -112,14 +108,7 @@ const Profile = () => {
               onMouseLeave={(e) => onLeave(e)} 
               onClick={(e) => onClick(e)}
             >
-              {hovering ? 
-                <BsHeartHalf size='2.2vh'/> 
-                : 
-                following ? 
-                  <BsHeartFill size='2.2vh'/> 
-                  : 
-                  <BsHeart size='2.2vh'/>
-              }
+              {following ? <BsHeartFill size='2.2vh'/> : <BsHeart size='2.2vh'/>}
             </Center>
 
             {/* MESSAGE USER */}
@@ -148,9 +137,10 @@ const Profile = () => {
             </Menu>
           </Center>
         </Flex>
+
         <Flex>
+          {/* LEFT TAB PANEL  */}
           <Box 
-            position='absolute'
             minH='67vh'
             width='65%'
             backgroundColor='#242424'
@@ -161,7 +151,6 @@ const Profile = () => {
               isFitted 
               isLazy
             >
-
               {/* TAB LIST  */}
               <TabList mb='1vh'>
                 <ProfileTab label='EXPO'/>
@@ -182,12 +171,10 @@ const Profile = () => {
             </Tabs>
           </Box>
 
+          {/* RIGHT DETAILS PANEL  */}
           <Box 
-            position='absolute'
             minH='67vh'
-            width='35%' 
-            right={0}
-            top='33vh'
+            width='35%'
             p={2} 
             backgroundColor='#141414'
           >

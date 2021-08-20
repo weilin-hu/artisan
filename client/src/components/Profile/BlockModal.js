@@ -1,4 +1,4 @@
-import { useDisclosure } from '@chakra-ui/react'
+import { useDisclosure } from '@chakra-ui/react';
 
 import {
   BsExclamationOctagon,
@@ -30,7 +30,7 @@ const BlockModal = () => {
 
   return (
   <MenuItem 
-    icon={<VscCircleSlash size='2.2vh'/>} 
+    icon={<VscCircleSlash size='2.2vh'/>}
     fontSize='1.5vh'
     letterSpacing='0.2vh'
     mb='.2vh'

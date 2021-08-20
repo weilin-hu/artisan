@@ -18,7 +18,7 @@ const Details = () => {
         <Accordion 
           border='none'
           minW='100%' 
-          h='66%' 
+          h='100s%'
           defaultIndex={[0, 1, 2]} 
           allowMultiple
         >
@@ -41,7 +41,7 @@ const Details = () => {
               letterSpacing='0.2vh'
               fontSize='1.5vh'
             >
-              This is my bio. 🤣
+              This is my bio. 🤣 
             </AccordionPanel>
           </AccordionItem>
 
@@ -80,11 +80,8 @@ const Details = () => {
                 </Box>
               <AccordionIcon/>
             </AccordionButton>
-            <AccordionPanel
-              letterSpacing='0.2vh'
-              fontSize='1.5vh'
-            >
-              This is my bio. 🤣
+            <AccordionPanel>
+              <FeaturedGallery />
             </AccordionPanel>
           </AccordionItem>
         </Accordion>
