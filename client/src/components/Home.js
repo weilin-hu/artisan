@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { postImageFetch, postAuthFetch } from '../fetch/fetch';
+import NavBar from './NavBar';
 
 import { 
   Box,
@@ -59,6 +60,7 @@ const Home = () => {
 
   return (
     <Box className='background'>
+      <NavBar />
       <Flex className='drawer'>
         <Box>
           <Formik onSubmit={(e) => { console.log('onSubmit: ', e) }}>
