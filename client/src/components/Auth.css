@@ -1,0 +1,94 @@
+.background {
+    top: 0;
+    left: 0;
+    background-color: #000;
+    /* background-image: url('https://i.pinimg.com/originals/57/0d/fb/570dfb43b892cfa28a6d5fbe907b7a7a.jpg'); */
+    position: fixed;
+    min-width: 100%;
+    min-height: 100%;
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center;
+    font-family:Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
+    letter-spacing: 1px;
+}
+
+.back {
+    color: #FFA800;
+    cursor: pointer;
+    font-size: medium;
+}
+
+.back:hover {
+    color: #ffc400;
+}
+
+.back:active {
+    color: #FFA80081;
+    color: #00000033;
+}
+
+.drawer {
+    padding: 2%;
+    width: 33%;
+    min-height: 100%;
+    position: fixed;
+    flex-direction: column;
+    justify-content: space-between;
+    background-color: rgba(0, 0, 0, 0.40);
+}
+
+.additional-options {
+    color: #ffc400;
+    cursor: pointer;
+    margin-top: 30px;
+    text-align: center;
+    font-size: medium;
+}
+
+.additional-options:hover {
+    text-decoration: underline;
+}
+
+.additional-options:active {
+    opacity: 50%;
+}
+
+.user-agreement {
+    color: white;
+    opacity: 40%;
+    text-align: center;
+    font-size: small;
+}
+
+.chakra-select-items {
+    background: black;
+}
+
+option {
+    background-color: #000;
+    margin: 4;
+    color: black;
+}
+
+.error-toast {
+    color:#FFA800;
+    font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
+    letter-spacing: 1.5px;
+    padding: 10px 20px;
+    background-color: #00000050;
+    text-align: center;
+    justify-content: center;
+    display: flex;
+}
+
+.success-toast {
+    color:#FFA800;
+    font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
+    letter-spacing: 1.5px;
+    padding: 10px 20px;
+    background-color: #00000050;
+    text-align: center;
+    justify-content: center;
+    display: flex;
+}
