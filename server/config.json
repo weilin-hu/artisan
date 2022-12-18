@@ -12,5 +12,5 @@
     "s3_secret_key": "jiMhGuqTZw+BEd+eD78TpMFDAxUwuY8HLj24p66A",
     "s3_region": "us-east-1",
     "aws_arn": "arn:aws:s3:::artisan-posts",
-    "openai_api_key": "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"
+    "openai_api_key": "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"
 }
