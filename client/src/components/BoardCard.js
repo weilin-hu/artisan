@@ -9,14 +9,24 @@ import {
   Divider,
   Flex,
   HStack,
+  Modal,
+  ModalBody,
+  ModalOverlay,
+  ModalHeader,
+  ModalCloseButton,
+  ModalContent,
+  ModalFooter,
   SimpleGrid,
   VStack,
+  useDisclosure,
 } from '@chakra-ui/react';
 import { BsFiles, BsX } from 'react-icons/bs';
+import { VscTrash } from 'react-icons/vsc';
 
 
 const BoardCard = ({ board }) => {
     let navigate = useNavigate();
+    const { isOpen, onOpen, onClose } = useDisclosure()
     const [size, setSize] = useState(0);
     const [style, setStyle] = useState({display: 'none'});
 
@@ -46,7 +56,7 @@ const BoardCard = ({ board }) => {
     };
 
     const deleteBoard = () => {
-
+        onClose();
     };
 
     return (
@@ -70,10 +80,41 @@ const BoardCard = ({ board }) => {
                     zIndex={5}
                     _hover={{ color: 'red.800' }}
                     _active={{ color: 'red.900' }}
-                    onClick={deleteBoard}
+                    onClick={onOpen}
                 >
                     <BsX size={24}/>
                 </Box>
+                <Modal isOpen={isOpen} onClose={onClose} >
+                    <ModalOverlay />
+                    <ModalContent
+                        rounded={'4px'}
+                        bgColor={'gray.700'}
+                    >
+                        <ModalCloseButton />
+                        <ModalHeader>
+                            <Box color={'gray.500'} fontSize={'lg'} fontWeight={'thin'} letterSpacing={'1px'}>
+                                Are you sure you want to delete {board.title}?
+                            </Box>
+                        </ModalHeader>
+                        <ModalFooter>
+                            <Box
+                                color={'gray.800'}
+                            >
+                                <Button 
+                                    leftIcon={<VscTrash />}
+                                    variant='outline'
+                                    borderColor={'gray.800'}
+                                    bgColor={'red.800'}
+                                    _hover={{ bgColor: 'red.900' }}
+                                    _active={{ color: 'gray.900', bgColor: 'red.900' }}
+                                    onClick={deleteBoard}
+                                >
+                                    Delete
+                                </Button>
+                            </Box>
+                        </ModalFooter>
+                    </ModalContent>
+                </Modal>
                 <Box style={style} position={'absolute'} bg={'#00000080'} w={'200px'} p={'10px'} minH={'200px'}>
                 </Box>
                 <Button
