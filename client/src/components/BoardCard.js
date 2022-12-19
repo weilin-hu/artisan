@@ -24,7 +24,7 @@ import { BsFiles, BsX } from 'react-icons/bs';
 import { VscTrash } from 'react-icons/vsc';
 
 
-const BoardCard = ({ board }) => {
+const BoardCard = ({ board, deleteBoard }) => {
     let navigate = useNavigate();
     const { isOpen, onOpen, onClose } = useDisclosure()
     const [size, setSize] = useState(0);
@@ -33,7 +33,7 @@ const BoardCard = ({ board }) => {
     useEffect(() => {
         // declare the async data fetching function
         const fetchCards = async () => {
-          const data = await getFetch(`http://localhost:8080/board/${board.id}/cards`);    
+          const data = await getFetch(`http://localhost:8080/board/${board.id}/cards`);
           setSize(data.cards.length);
         }
     
@@ -55,8 +55,9 @@ const BoardCard = ({ board }) => {
         navigate(`/board/${board.id}`);
     };
 
-    const deleteBoard = () => {
+    const onDelete = async () => {
         onClose();
+        await deleteBoard(board.id);
     };
 
     return (
@@ -107,7 +108,7 @@ const BoardCard = ({ board }) => {
                                     bgColor={'red.800'}
                                     _hover={{ bgColor: 'red.900' }}
                                     _active={{ color: 'gray.900', bgColor: 'red.900' }}
-                                    onClick={deleteBoard}
+                                    onClick={onDelete}
                                 >
                                     Delete
                                 </Button>

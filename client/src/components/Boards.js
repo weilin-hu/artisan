@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAuthFetch } from '../fetch/fetch';
+import { getAuthFetch, deleteAuthFetch } from '../fetch/fetch';
 import NavBar from './NavBar';
 
 import { 
@@ -17,13 +17,12 @@ import BoardCard from './BoardCard';
 const Boards = () => {
     let navigate = useNavigate();
     const [boards, setBoards] = useState([]);
+    const [numDelete, setNumDelete] = useState(0);
 
     useEffect(() => {
         // declare the async data fetching function
         const fetchBoards = async () => {
             const data = await getAuthFetch(`http://localhost:8080/boards`);
-            console.log('data: ', data);
-
             setBoards(data.boards);
         }
 
@@ -31,7 +30,16 @@ const Boards = () => {
         fetchBoards()
         // make sure to catch any error
         .catch(console.error);;
-    }, [])
+    }, [numDelete])
+
+    const deleteBoard = async (boardId) => {
+        const data = await deleteAuthFetch(`http://localhost:8080/board/${boardId}`);
+        if (data.success) {
+            let num = numDelete;
+            num++;
+            setNumDelete(num);
+        }
+    };
 
     return (
         <VStack bgColor='#0E0F15' minW={'100%'} alignItems={'start'}>
@@ -61,7 +69,7 @@ const Boards = () => {
                             justify='space-between'
                         >
                           {boards && boards.map((board) => 
-                            <BoardCard id={board.id} board={board}></BoardCard>)}
+                            <BoardCard key={board.id} board={board} deleteBoard={deleteBoard}></BoardCard>)}
                         </SimpleGrid>
                     </VStack>
                     <Box w={'20%'}>Hi</Box>

@@ -68,8 +68,9 @@ const opts = {
 // passport use JwtStrategy to extract token from header and sends user associated with token
 passport.use(new JwtStrategy(opts, async function (payload, done) {
     try {
+        console.log("Validating...");
         const result = await query(`SELECT * FROM User WHERE id=${payload.id}`);
-        console.log("Validating...", payload.id);
+        console.log(payload.id);
         if (result.length > 0) {
             const user = result[0];
             return done(null, user);
@@ -534,6 +535,40 @@ app.post('/board/:id/add', passport.authenticate('jwt', { session: false }), asy
             res.json({ success: true, card: card });
             return;
         }
+    } catch (err) {
+        res.json({ success: false, error: { code: '400', msg: err.code } });
+        return;
+    }
+});
+
+app.delete('/board/:id', passport.authenticate('jwt', { session: false }), async (req, res) => {
+    const user = req.user;
+    const {id} = req.params;
+
+    // check that board with id existss
+    let board;
+    try {
+        const result = await query(`SELECT * FROM Board WHERE id=${id}`);
+        if (result.length == 0) {
+            res.json({ success: false, error: { code: '404', msg: `Board ${id} could not be found.` } });
+            return;
+        } else {
+            board = result[0];
+            if (board.user_id != user.id) {
+                res.json({ success: false, error: { code: '403', msg: `Unauthorized: You do not have permission to delete this mood board.` } });
+                return;
+            }
+        }
+    } catch (err) {
+        res.json({ success: false, error: { code: '400', msg: err.code } });
+        return;
+    }
+
+    try {
+        const result = await query(`DELETE FROM Board WHERE id=${id}`);
+        console.log(result);
+        res.json({ success: true, board: board });
+        return;
     } catch (err) {
         res.json({ success: false, error: { code: '400', msg: err.code } });
         return;

@@ -2,6 +2,23 @@
 // const fetch = require('node-fetch');
 
 // /register /login endpoint
+async function deleteAuthFetch(URL) {
+  const fetchData = { 
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  };
+  try {
+    const response = await fetch(URL, fetchData);
+    return response.json();
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+// /register /login endpoint
 async function postFetch(URL, data) {
   const fetchData = {
     method: 'POST',
@@ -79,4 +96,4 @@ async function postImageFetch(URL, data) {
 }
  
  // module.exports = { fetchRegister, fetchLogin, fetchLogout };
- export { postFetch, postImageFetch, postAuthFetch, getFetch, getAuthFetch };
+ export { postFetch, postImageFetch, postAuthFetch, getFetch, getAuthFetch, deleteAuthFetch };
