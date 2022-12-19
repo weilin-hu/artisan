@@ -27,7 +27,8 @@ const NavLink = ({ children }) => (
     <Link
         style={NavLinkStyle}
         h={16}
-        p={5}
+        px={4}
+        py={6}
         color={'gray.500'}
         _hover={{ color: 'teal.700', bgColor: 'gray.900' }}
         _active={{ color: 'teal.800', bgColor: 'gray.900' }}
@@ -61,7 +62,7 @@ const NavBar = () => {
 
   return (
     <>
-      <Box bg={'gray.800'} px={4}>
+      <Box bg={'gray.800'} px={4} minW={'100%'}>
         <Flex h={16} alignItems={'center'} justifyContent={'space-between'}>
           <IconButton
             h={16}

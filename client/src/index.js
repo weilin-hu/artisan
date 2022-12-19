@@ -23,7 +23,7 @@ ReactDOM.render(
         <Route path='/boards' element={ <Boards/> }>
         </Route>
       </Routes>
-    </BrowserRouter>,
+    </BrowserRouter>
   </ChakraProvider>,
   document.getElementById('root')
 );

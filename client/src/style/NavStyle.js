@@ -1,6 +1,6 @@
 const NavLinkStyle = {
     letterSpacing: 2.5,
-    fontSize: 20,
+    fontSize: 16,
     overflow: 'hidden',
 }
 
