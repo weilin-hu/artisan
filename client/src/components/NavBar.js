@@ -1,4 +1,3 @@
-import { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -17,28 +16,48 @@ import {
   useDisclosure,
   Stack,
 } from '@chakra-ui/react';
-import { BsClipboard, BsList, BsX } from 'react-icons/bs';
+import { BsClipboard, BsList, BsLayoutWtf } from 'react-icons/bs';
 import { VscSignOut, VscAccount } from 'react-icons/vsc';
 import { NavLinkStyle, registerButtonStyle } from '../style/NavStyle';
 
-const Links = ['PAGE 1', 'PAGE 2', 'PAGE 3'];
+const Links = ['PAGE 1', 'PAGE 2', 'MOOD BOARDS'];
 
 const NavLink = ({ children }) => (
-  <Link
-    style={NavLinkStyle}
-    h={16}
-    p={5}
-    color={'gray.500'}
-    _hover={{ color: 'teal.700', bgColor: 'gray.900' }}
-    _active={{ color: 'teal.800', bgColor: 'gray.900' }}
-    href={''}>
-    {children}
-  </Link>
+    localStorage.getItem('token') ?
+    <Link
+        style={NavLinkStyle}
+        h={16}
+        p={5}
+        color={'gray.500'}
+        _hover={{ color: 'teal.700', bgColor: 'gray.900' }}
+        _active={{ color: 'teal.800', bgColor: 'gray.900' }}
+        href={''}
+    >
+        <Flex>
+            {(children === 'MOOD BOARDS') ? <BsLayoutWtf size={24}/> : <></>}
+            <Box ml={2}>
+                {children}
+            </Box>
+        </Flex>
+    </Link> :
+    <></>
 );
 
 const NavBar = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   let navigate = useNavigate();
+
+  const logout = (e) => {
+    e.preventDefault();
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/login');
+  }
+
+  const login = (e) => {
+    e.preventDefault();
+    navigate('/login');
+  }
 
   return (
     <>
@@ -60,7 +79,7 @@ const NavBar = () => {
             <Button variant='link'>
                 <Image  src={require('../images/logo.png')} alt='logo' h={14} />
             </Button>
-            <HStack>
+            <HStack display={{ base: 'none', md: 'flex' }}>
               {Links.map((link) => (
                 <NavLink key={link}>{link}</NavLink>
               ))}
@@ -81,7 +100,7 @@ const NavBar = () => {
                     backgroundColor='gray.800' 
                     _hover={{ color: 'yellow.700', backgroundColor: 'gray.900' }}
                     _active={{ color: 'yellow.800', backgroundColor: 'gray.900' }}
-                    onClick={() => navigate('/login')}
+                    onClick={(e) => login(e)}
                 >
                     Log In
                 </Button>
@@ -99,7 +118,7 @@ const NavBar = () => {
                     backgroundColor='gray.800' 
                     _hover={{ color: 'yellow.600', backgroundColor: 'gray.900' }}
                     _active={{ color: 'yellow.700', backgroundColor: 'gray.900' }}
-                    onClick={(e) => navigate('/register')}
+                    onClick={() => navigate('/register')}
                 >
                     Register
                 </Button>
@@ -118,7 +137,7 @@ const NavBar = () => {
                 <MenuList bgColor='gray.600' rounded={4} border='none'>
                     <MenuItem 
                         _hover={{ color: 'gray.500', bgColor: 'gray.700' }}
-                        onClick={() => navigate('/login')}
+                        onClick={() => navigate('/')}
                     >
                         <HStack>
                             <VscAccount color='#718096' size={20}/>
@@ -128,10 +147,10 @@ const NavBar = () => {
                         </HStack>
                     </MenuItem>
                     <MenuDivider />
-                    <MenuItem 
+                    <MenuItem
                         color={'gray.400'}
                         _hover={{ color: 'gray.500', bgColor: 'gray.700' }}
-                        onClick={() => navigate('/login')}
+                        onClick={(e) => logout(e)}
                     >
                         <HStack>
                             <VscSignOut color='#718096' size={20}/>

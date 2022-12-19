@@ -13,11 +13,15 @@ const fs = require('fs');
 const multer = require('multer')
 const upload = multer({ dest: 'uploads/' })
 
+const Jimp = require('jimp');
+
 const config = require('./config.json');
 const db = require('./db');
+const helper = require('./helper.js');
 const { Console } = require('console');
 const app = express();
 const query = util.promisify(db.query).bind(db);
+
 
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -199,7 +203,7 @@ app.post('/login', async (req, res) => {
             }, config.jwt_key, { expiresIn: '3 hours' });
 
             // return user token
-            res.status(200).json({ success: true, token: token });
+            res.status(200).json({ success: true, token: token, user: user });
             return;
         } else {
             // status 401 if password does not match
@@ -299,6 +303,17 @@ app.post('/createBoard', passport.authenticate('jwt', { session: false }), async
     }
 });
 
+app.get('/boards', passport.authenticate('jwt', { session: false }), async (req, res) => {
+    const user = req.user;
+    try {
+        const result = await query(`SELECT * FROM Board WHERE user_id=${user.id}`);
+        res.json({ success: true, boards: result });
+    } catch (err) {
+        res.json({ success: false, error: { code: '400', msg: err.code } });
+        return;
+    }
+});
+
 // get cards associated with this board
 app.get('/board/:id/cards', async (req, res) => {
     // const user = req.user;
@@ -334,6 +349,112 @@ app.get('/board/:id/cards', async (req, res) => {
     }
 });
 
+const findBiggestColorRange = (rgbaArray) => {
+    let rMin = Number.MAX_VALUE;
+    let gMin = Number.MAX_VALUE;
+    let bMin = Number.MAX_VALUE;
+  
+    let rMax = Number.MIN_VALUE;
+    let gMax = Number.MIN_VALUE;
+    let bMax = Number.MIN_VALUE;
+  
+    // iterate through all pixels, updating min max values
+    rgbaArray.forEach((pixel) => {
+      rMin = Math.min(rMin, pixel.r);
+      gMin = Math.min(gMin, pixel.g);
+      bMin = Math.min(bMin, pixel.b);
+  
+      rMax = Math.max(rMax, pixel.r);
+      gMax = Math.max(gMax, pixel.g);
+      bMax = Math.max(bMax, pixel.b);
+    });
+  
+    const rRange = rMax - rMin;
+    const gRange = gMax - gMin;
+    const bRange = bMax - bMin;
+  
+    const biggestRange = Math.max(rRange, gRange, bRange);
+    if (biggestRange === rRange) {
+      return 'r';
+    } else if (biggestRange === gRange) {
+      return 'g';
+    } else {
+      return 'b';
+    }
+  };
+
+const quantization = (rgbaArray, maxDepth, depth) => {
+    // base case
+    if (depth === maxDepth || rgbaArray.length === 0) {
+        // get average rgb color value
+        const color = rgbaArray.reduce(
+            (prev, curr) => {
+                prev.r += curr.r;
+                prev.g += curr.g;
+                prev.b += curr.b;
+                return prev;
+            },
+            {
+                r: 0,
+                g: 0,
+                b: 0,
+            }
+        );
+    
+        color.r = Math.round(color.r / rgbaArray.length);
+        color.g = Math.round(color.g / rgbaArray.length);
+        color.b = Math.round(color.b / rgbaArray.length);
+        console.log('color: ', color);
+        return [color];
+    }
+  
+    const sortBy = findBiggestColorRange(rgbaArray);
+    rgbaArray.sort((p1, p2) => {
+        return p1[sortBy] - p2[sortBy];
+    });
+    
+    const mid = rgbaArray.length / 2;
+    return [
+        ...quantization(rgbaArray.slice(0, mid), maxDepth, depth + 1),
+        ...quantization(rgbaArray.slice(mid + 1), maxDepth, depth + 1),
+    ];
+}
+
+const getRgbaArray = (data) => {
+    const rgbaValues = [];
+    for (let i = 0; i < data.length; i += 4) {
+      const rgb = {
+        r: data[i],
+        g: data[i + 1],
+        b: data[i + 2],
+        a: data[i + 3],
+      };
+      rgbaValues.push(rgb);
+    }
+    return rgbaValues;
+};
+
+const removeTransparent = (data) => {
+    const rgbaArray = [];
+    for (let i = 0; i < data.length; i++) {
+        if (data[i].a > 0) {
+            rgbaArray.push(data[i]);
+        }
+    }
+    return rgbaArray;
+}
+
+const removeDups = (palette) => {
+    const newPalette = [];
+    for (let i = 1; i < palette.length; i++) {
+        if ((palette[i].r !== palette[i - 1].r) || (palette[i].g !== palette[i - 1].g) || (palette[i].b !== palette[i - 1].b)) {
+            newPalette.push(palette[i]);
+        }
+    }
+    return newPalette;
+}
+
+// add card to board
 app.post('/board/:id/add', passport.authenticate('jwt', { session: false }), async (req, res) => {
     const user = req.user;
     const {id} = req.params;
@@ -389,8 +510,30 @@ app.post('/board/:id/add', passport.authenticate('jwt', { session: false }), asy
             url,
             desc,
         };
-        res.json({ success: true, card: card });
-        return;
+        // get the palette associated with this color card
+        if (type === 'color') {
+            const key = url.replace('https://artisan-posts.s3.amazonaws.com/', '');
+            const params = {
+                Bucket: config.s3_bucket,
+                Key: key,
+            };
+
+            s3.getObject(params, function(err, data) {
+                Jimp.read(data.Body).then((image) => {
+                    // get rbgaArray from data
+                    const rgbaArray = removeTransparent(getRgbaArray(image.bitmap.data));
+                    const palette = removeDups(quantization(rgbaArray, 3, 0));
+                    
+                    res.json({ success: true, card: card, palette: palette });
+                    return;
+                }).catch(err => {
+                    console.error(err);
+                });
+            });
+        } else {
+            res.json({ success: true, card: card });
+            return;
+        }
     } catch (err) {
         res.json({ success: false, error: { code: '400', msg: err.code } });
         return;

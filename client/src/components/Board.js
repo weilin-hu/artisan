@@ -78,6 +78,7 @@ const Board = () => {
       desc: desc,
     }
     const resp2 = await postAuthFetch(`http://localhost:8080/board/${id}/add`, data);
+    console.log(resp2.palette);
     setCards(cards => [...cards, resp2.card]);
     onClose();
     setDesc('');

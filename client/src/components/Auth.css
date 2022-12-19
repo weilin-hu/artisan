@@ -1,8 +1,6 @@
 .background {
     top: 0;
     left: 0;
-    background-color: #000;
-    /* background-image: url('https://i.pinimg.com/originals/57/0d/fb/570dfb43b892cfa28a6d5fbe907b7a7a.jpg'); */
     position: fixed;
     min-width: 100%;
     min-height: 100%;

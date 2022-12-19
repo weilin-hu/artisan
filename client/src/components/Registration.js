@@ -169,7 +169,7 @@ const Registration = () => {
   };
 
   return (
-    <Box className='background'>
+    <Box className='background' bgColor='gray.900'>
       <Flex className='drawer'>
         <Box>
           <Flex className='back' onClick={login}>

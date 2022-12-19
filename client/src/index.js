@@ -6,6 +6,7 @@ import Registration from './components/Registration';
 import Login from './components/Login';
 import Home from './components/Home';
 import Board from './components/Board';
+import Boards from './components/Boards';
 
 ReactDOM.render(
   <ChakraProvider>
@@ -18,6 +19,8 @@ ReactDOM.render(
         <Route path='/login' element={ localStorage.getItem('token') ? <Navigate to='/' /> : <Login/> }>
         </Route>
         <Route path='/board/:id' element={ <Board/> }>
+        </Route>
+        <Route path='/boards' element={ <Boards/> }>
         </Route>
       </Routes>
     </BrowserRouter>,

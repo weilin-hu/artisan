@@ -46,7 +46,8 @@ const Login = () => {
     } else {
       // save token in localStorage
       localStorage.setItem('token', login.token);
-      navigate('/home');
+      localStorage.setItem('user', login.user);
+      navigate('/');
     }
   };
 
@@ -55,7 +56,7 @@ const Login = () => {
   };
 
   return (
-    <Box className='background'>
+    <Box className='background' bgColor='gray.900'>
       <Flex className='drawer'>
         <Box>
           <Box my={15} letterSpacing={3} color='white' fontSize='5xl' fontWeight='bold'>

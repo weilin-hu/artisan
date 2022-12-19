@@ -59,7 +59,7 @@ const Home = () => {
   };
 
   return (
-    <Box className='background'>
+    <Box className='background' bgColor='#0E0F15'>
       <NavBar />
       <Flex className='drawer'>
         <Box>
@@ -101,7 +101,6 @@ const Home = () => {
                   onChange={(e) => setTitle(e.target.value)}
                 />
               </ModalBody>
-
               <ModalFooter>
                 <Button colorScheme='blackAlpha' variant='outline' letterSpacing={1.5} mr={3} onClick={onClose}>Close</Button>
                 <Button colorScheme='blackAlpha' variant='outline' letterSpacing={1.5} color='#FFA800' backgroundColor='#00000033' _hover={{ backgroundColor: '#ffaa001c' }} onClick={onCreate}>Create</Button>

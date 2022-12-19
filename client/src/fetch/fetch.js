@@ -3,7 +3,6 @@
 
 // /register /login endpoint
 async function postFetch(URL, data) {
-  console.log(data)
   const fetchData = {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -17,8 +16,7 @@ async function postFetch(URL, data) {
   }
 }
  
- // /logout
- async function getFetch(URL) {
+async function getFetch(URL) {
    try {
      // GET fetch
      const response = await fetch(URL);
@@ -26,7 +24,23 @@ async function postFetch(URL, data) {
    } catch (err) {
      console.error(err);
    }
- }
+}
+
+async function getAuthFetch(URL) {
+  const fetchData = {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    },
+  };
+  try {
+    // GET fetch
+    const response = await fetch(URL, fetchData);
+    return response.json();
+  } catch (err) {
+    console.error(err);
+  }
+}
 
 // /register /login endpoint
 async function postAuthFetch(URL, data) {
@@ -65,4 +79,4 @@ async function postImageFetch(URL, data) {
 }
  
  // module.exports = { fetchRegister, fetchLogin, fetchLogout };
- export { postFetch, postImageFetch, postAuthFetch, getFetch };
+ export { postFetch, postImageFetch, postAuthFetch, getFetch, getAuthFetch };
