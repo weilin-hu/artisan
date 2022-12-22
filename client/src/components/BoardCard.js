@@ -1,26 +1,21 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getFetch } from '../fetch/fetch';
-import NavBar from './NavBar';
+import { getAuthFetch } from '../fetch/fetch';
 
 import { 
   Box,
   Button,
-  Divider,
   Flex,
-  HStack,
+  Image,
   Modal,
-  ModalBody,
   ModalOverlay,
   ModalHeader,
   ModalCloseButton,
   ModalContent,
   ModalFooter,
-  SimpleGrid,
-  VStack,
   useDisclosure,
 } from '@chakra-ui/react';
-import { BsFiles, BsX } from 'react-icons/bs';
+import { BsFiles, BsX, BsLayoutWtf } from 'react-icons/bs';
 import { VscTrash } from 'react-icons/vsc';
 
 
@@ -28,12 +23,16 @@ const BoardCard = ({ board, deleteBoard }) => {
     let navigate = useNavigate();
     const { isOpen, onOpen, onClose } = useDisclosure()
     const [size, setSize] = useState(0);
+    const [firstCard, setFirstCard] = useState('');
     const [style, setStyle] = useState({display: 'none'});
 
     useEffect(() => {
         // declare the async data fetching function
         const fetchCards = async () => {
-          const data = await getFetch(`http://localhost:8080/board/${board.id}/cards`);
+          const data = await getAuthFetch(`http://localhost:8080/board/${board.id}/cards`);
+          if (data.cards.length > 0) {
+            setFirstCard(data.cards[0].url)
+          }
           setSize(data.cards.length);
         }
     
@@ -71,19 +70,35 @@ const BoardCard = ({ board, deleteBoard }) => {
                 onMouseLeave={handleMouseOut}
                 onMouseMove={handleMouseOver}
             >
+                {(size > 0 && firstCard) ?
+                <Image
+                    src={firstCard}
+                    alt={board.title}
+                    w={'200px'}
+                    h={'200px'}
+                    position={'absolute'}
+                    objectFit={'cover'}
+                    onMouseOver={handleMouseOver}
+                    onMouseLeave={handleMouseOut}
+                    onMouseMove={handleMouseOver}
+                /> : 
+                <Box position={'absolute'} color={'gray.600'} mx={'75px'} my={'30px'}>
+                    <BsLayoutWtf size={'50px'}/>
+                </Box>
+                }
                 <Box
                     style={style}
                     as={'button'}
-                    color={'yellow.700'}
+                    color={'black'}
                     position={'absolute'}
-                    w={'24px'}
-                    ml={'176px'}
-                    zIndex={5}
+                    w={'36px'}
+                    ml={'164px'}
+                    zIndex={6}
                     _hover={{ color: 'red.800' }}
                     _active={{ color: 'red.900' }}
                     onClick={onOpen}
                 >
-                    <BsX size={24}/>
+                    <BsX size={36}/>
                 </Box>
                 <Modal isOpen={isOpen} onClose={onClose} >
                     <ModalOverlay />
@@ -116,7 +131,7 @@ const BoardCard = ({ board, deleteBoard }) => {
                         </ModalFooter>
                     </ModalContent>
                 </Modal>
-                <Box style={style} position={'absolute'} bg={'#00000080'} w={'200px'} p={'10px'} minH={'200px'}>
+                <Box style={style} position={'absolute'} bg={'#00000080'} w={'200px'} p={'10px'} minH={'200px'} zIndex={5}>
                 </Box>
                 <Button
                     style={style}
@@ -129,6 +144,7 @@ const BoardCard = ({ board, deleteBoard }) => {
                     variant={'outline'}
                     position={'absolute'}
                     alignSelf={'center'}
+                    zIndex={6}
                     _hover={{ bgColor: 'gray.800' }}
                     _active={{ bgColor: 'gray.900' }}
                     onClick={goToBoard}
@@ -145,15 +161,16 @@ const BoardCard = ({ board, deleteBoard }) => {
                 minH={'80px'}
                 mt={'120px'}
                 justifyContent={'space-between'}
+                zIndex={2}
             >
                 <Box color={'gray.400'} overflow={'hidden'}>
                     {board.title}
                 </Box>
-                <Flex spacing={2}>
-                    <Box color={'gray.700'} mr={'6px'}>
+                <Flex color={'gray.500'} spacing={2}>
+                    <Box mr={'6px'}>
                         {size}
                     </Box>
-                    <BsFiles color={'#2D3748'} size={18}/>
+                    <BsFiles size={18}/>
                 </Flex>
             </Flex>
         </Flex>

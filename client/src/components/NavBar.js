@@ -18,25 +18,24 @@ import {
 } from '@chakra-ui/react';
 import { BsClipboard, BsList, BsLayoutWtf } from 'react-icons/bs';
 import { VscSignOut, VscAccount } from 'react-icons/vsc';
-import { NavLinkStyle, registerButtonStyle } from '../style/NavStyle';
+import { registerButtonStyle } from '../style/NavStyle';
 
-const Links = ['PAGE 1', 'PAGE 2', 'MOOD BOARDS'];
+const Links = ['MOOD BOARDS'];
 
 const NavLink = ({ children }) => (
     localStorage.getItem('token') ?
     <Link
-        style={NavLinkStyle}
         h={16}
         px={4}
         py={6}
         color={'gray.500'}
         _hover={{ color: 'teal.700', bgColor: 'gray.900' }}
         _active={{ color: 'teal.800', bgColor: 'gray.900' }}
-        href={''}
+        href={'/boards'}
     >
         <Flex>
             {(children === 'MOOD BOARDS') ? <BsLayoutWtf size={24}/> : <></>}
-            <Box ml={2}>
+            <Box ml={2} fontSize={'md'} letterSpacing={'4px'}>
                 {children}
             </Box>
         </Flex>

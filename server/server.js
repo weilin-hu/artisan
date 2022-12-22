@@ -12,6 +12,8 @@ const aws = require('aws-sdk');
 const fs = require('fs');
 const multer = require('multer')
 const upload = multer({ dest: 'uploads/' })
+const ntc = require('ntcjs');
+const { Configuration, OpenAIApi } = require('openai');
 
 const Jimp = require('jimp');
 
@@ -19,8 +21,11 @@ const config = require('./config.json');
 const db = require('./db');
 const helper = require('./helper.js');
 const { Console } = require('console');
+const { nextTick } = require('process');
 const app = express();
 const query = util.promisify(db.query).bind(db);
+
+
 
 
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -35,6 +40,11 @@ const s3 = new aws.S3({
     secretAccessKey: config.s3_secret_key,
     region: config.s3_region,
 });
+
+const configuration = new Configuration({
+    apiKey: config.openai_api_key,
+});
+const openai = new OpenAIApi(configuration);
 
 function currDate() {
     const d = new Date();
@@ -307,7 +317,7 @@ app.post('/createBoard', passport.authenticate('jwt', { session: false }), async
 app.get('/boards', passport.authenticate('jwt', { session: false }), async (req, res) => {
     const user = req.user;
     try {
-        const result = await query(`SELECT * FROM Board WHERE user_id=${user.id}`);
+        const result = await query(`SELECT * FROM Board WHERE user_id=${user.id} ORDER BY id DESC`);
         res.json({ success: true, boards: result });
     } catch (err) {
         res.json({ success: false, error: { code: '400', msg: err.code } });
@@ -316,8 +326,8 @@ app.get('/boards', passport.authenticate('jwt', { session: false }), async (req,
 });
 
 // get cards associated with this board
-app.get('/board/:id/cards', async (req, res) => {
-    // const user = req.user;
+app.get('/board/:id/cards', passport.authenticate('jwt', { session: false }), async (req, res) => {
+    const user = req.user;
     const {id} = req.params;
 
     // check that board with id exists
@@ -329,10 +339,10 @@ app.get('/board/:id/cards', async (req, res) => {
             return;
         } else {
             board = result[0];
-            // if (board.user_id != user.id) {
-            //     res.json({ success: false, error: { code: '403', msg: `Unauthorized: You do not have permission to view this mood board.` } });
-            //     return;
-            // }
+            if (board.user_id != user.id) {
+                res.json({ success: false, error: { code: '403', msg: `Unauthorized: You do not have permission to view this mood board.` } });
+                return;
+            }
         }
     } catch (err) {
         res.json({ success: false, error: { code: '400', msg: err.code } });
@@ -343,6 +353,94 @@ app.get('/board/:id/cards', async (req, res) => {
     try {
         const result = await query(`SELECT * FROM Card WHERE board_id=${id}`);
         res.json({ success: true, cards: result });
+        return;
+    } catch (err) {
+        res.json({ success: false, error: { code: '400', msg: err.code } });
+        return;
+    }
+});
+
+app.get('/board/:id/card/:num/palette', passport.authenticate('jwt', { session: false }), async (req, res) => {
+    const user = req.user;
+    const { id, num } = req.params;
+
+    // check that board with id exists
+    try {
+        const result = await query(`SELECT * FROM Board WHERE id=${id}`);
+        if (result.length == 0) {
+            res.json({ success: false, error: { code: '404', msg: `Board ${id} could not be found.` } });
+            return;
+        } else {
+            if (result[0].user_id != user.id) {
+                res.json({ success: false, error: { code: '403', msg: `Unauthorized: You do not have permission to modify this mood board.` } });
+                return;
+            }
+        }
+    } catch (err) {
+        res.json({ success: false, error: { code: '400', msg: err.code } });
+        return;
+    }
+
+    // see if card num on this board exists
+    try {
+        const result = await query(`SELECT * FROM Card WHERE board_id=${id} AND num=${num}`);
+        if (result.length == 0) {
+            res.json({ success: false, error: { code: '404', msg: `Board ${id} does not have card ${num}.` } });
+            return;
+        } else if (result[0].type != 'color') {
+            res.json({ success: false, error: { code: '404', msg: `Card ${num} is not a color card.` } });
+            return;
+        }
+    } catch (err) {
+        res.json({ success: false, error: { code: '400', msg: err.code } });
+        return;
+    }
+
+    try {
+        const result = await query(`SELECT * FROM Color WHERE board_id=${id} AND card_num=${num}`);
+        res.json({ success: true, palette: result });
+        return
+    } catch (err) {
+        res.json({ success: false, error: { code: '400', msg: err.code } });
+        return;
+    }
+});
+
+app.delete('/board/:id/card/:num', passport.authenticate('jwt', { session: false }), async (req, res) => {
+    const user = req.user;
+    const { id, num } = req.params;
+
+    // check that board with id exists
+    let board;
+    try {
+        const result = await query(`SELECT * FROM Board WHERE id=${id}`);
+        if (result.length == 0) {
+            res.json({ success: false, error: { code: '404', msg: `Board ${id} could not be found.` } });
+            return;
+        } else {
+            board = result[0];
+            if (board.user_id != user.id) {
+                res.json({ success: false, error: { code: '403', msg: `Unauthorized: You do not have permission to modify this mood board.` } });
+                return;
+            }
+        }
+    } catch (err) {
+        res.json({ success: false, error: { code: '400', msg: err.code } });
+        return;
+    }
+
+    // remove card num on this board
+    try {
+        const result = await query(`SELECT * FROM Card WHERE board_id=${id} AND num=${num}`);
+        if (result.length == 0) {
+            res.json({ success: false, error: { code: '404', msg: `Board ${id} does not have card ${num}.` } });
+            return;
+        }
+        if (result[0].type === 'color') {
+            await query(`DELETE FROM Color WHERE board_id=${id} AND card_num=${num}`);
+        }
+        await query(`DELETE FROM Card WHERE board_id=${id} and num=${num}`);
+        res.json({ success: true, card: result[0] });
         return;
     } catch (err) {
         res.json({ success: false, error: { code: '400', msg: err.code } });
@@ -461,7 +559,7 @@ app.post('/board/:id/add', passport.authenticate('jwt', { session: false }), asy
     const {id} = req.params;
     const { type, url, desc } = req.body;
 
-    if (!type || !url || !desc) {
+    if (!type || !url || ((type != 'color') && !desc)) {
         res.json({ success: false, error: { code: '400', msg: 'Request malformed: Please include a all fields.' } });
         return;
     }
@@ -472,15 +570,13 @@ app.post('/board/:id/add', passport.authenticate('jwt', { session: false }), asy
     }
 
     // check that board with id existss
-    let board;
     try {
         const result = await query(`SELECT * FROM Board WHERE id=${id}`);
         if (result.length == 0) {
             res.json({ success: false, error: { code: '404', msg: `Board ${id} could not be found.` } });
             return;
         } else {
-            board = result[0];
-            if (board.user_id != user.id) {
+            if (result[0].user_id != user.id) {
                 res.json({ success: false, error: { code: '403', msg: `Unauthorized: You do not have permission to edit this mood board.` } });
                 return;
             }
@@ -493,24 +589,26 @@ app.post('/board/:id/add', passport.authenticate('jwt', { session: false }), asy
     // get count of how many cards already exist
     let num;
     try {
-        const result = await query(`SELECT COUNT(*) AS num FROM Card WHERE board_id=${id}`);
-        num = result[0].num;
+        const result = await query(`SELECT MAX(num) AS max_num FROM Card WHERE board_id=${id}`);
+        num = result[0].max_num;
     } catch (err) {
         res.json({ success: false, error: { code: '400', msg: err.code } });
         return;
     }
+    console.log('num: ', num);
+    
+    const card = {
+        num: num + 1,
+        board_id: id,
+        type,
+        url,
+        desc,
+    };
 
-    // insert card into database
+    let sql = `INSERT INTO Card (num, board_id, type, url, desc_text) 
+               VALUES (${num + 1}, '${id}', '${type}', '${url}', '${desc}');`;
+    
     try {
-        let sql = `INSERT INTO Card (num, board_id, type, url, desc_text) VALUES (${num + 1}, '${id}', '${type}', '${url}', '${desc}');`;
-        const result = await query(sql);
-        const card = {
-            num: num + 1,
-            board_id: id,
-            type,
-            url,
-            desc,
-        };
         // get the palette associated with this color card
         if (type === 'color') {
             const key = url.replace('https://artisan-posts.s3.amazonaws.com/', '');
@@ -519,22 +617,61 @@ app.post('/board/:id/add', passport.authenticate('jwt', { session: false }), asy
                 Key: key,
             };
 
+            // fetch image data from s3 bucket
             s3.getObject(params, function(err, data) {
-                Jimp.read(data.Body).then((image) => {
-                    // get rbgaArray from data
+                Jimp.read(data.Body).then(async (image) => {
+                    // get rbgaArray from data and remove transparent pixels
+                    console.log(image);
                     const rgbaArray = removeTransparent(getRgbaArray(image.bitmap.data));
+                    // generate palette and remove duplicate colors
                     const palette = removeDups(quantization(rgbaArray, 3, 0));
                     
-                    res.json({ success: true, card: card, palette: palette });
+                    // insert card into database
+                    await query(sql);
+
+                    // insert palette into database
+                    let sql1;
+                    for (let i = 0; i < palette.length; i++) {
+                        sql1 = `INSERT INTO Color (num, card_num, board_id, r, g, b)
+                                VALUES (${i+1}, ${num+1}, ${id}, ${palette[i].r}, ${palette[i].g}, ${palette[i].b})`;
+                        await(query(sql1));
+                    }
+
+                    res.json({ success: true, card, palette });
                     return;
                 }).catch(err => {
-                    console.error(err);
+                    res.json({ success: false, error: { code: '400', msg: err.code } });
+                    return;
                 });
             });
         } else {
+            await query(sql);
             res.json({ success: true, card: card });
             return;
         }
+    } catch (err) {
+        res.json({ success: false, error: { code: '400', msg: err.code } });
+        return;
+    }
+});
+
+app.get('/board/:id', passport.authenticate('jwt', { session: false }), async (req, res) => {
+    const user = req.user;
+    const {id} = req.params;
+
+    // check that board with id exists
+    try {
+        const result = await query(`SELECT * FROM Board WHERE id=${id}`);
+        if (result.length == 0) {
+            res.json({ success: false, error: { code: '404', msg: `Board ${id} could not be found.` } });
+            return;
+        }
+        if (result[0].user_id != user.id) {
+            res.json({ success: false, error: { code: '403', msg: `Unauthorized: You do not have permission to delete this mood board.` } });
+            return;
+        }
+        res.json({ success: true, board: result[0] });
+        return;
     } catch (err) {
         res.json({ success: false, error: { code: '400', msg: err.code } });
         return;
@@ -564,9 +701,12 @@ app.delete('/board/:id', passport.authenticate('jwt', { session: false }), async
         return;
     }
 
+    // remove palette/colors and card from this board before removing this Board entirely
     try {
-        const result = await query(`DELETE FROM Board WHERE id=${id}`);
-        console.log(result);
+        await query(`DELETE FROM Color WHERE board_id=${id}`);
+        await query(`DELETE FROM Card WHERE board_id=${id}`);
+        await query(`DELETE FROM Board WHERE id=${id}`);
+        
         res.json({ success: true, board: board });
         return;
     } catch (err) {
@@ -575,17 +715,123 @@ app.delete('/board/:id', passport.authenticate('jwt', { session: false }), async
     }
 });
 
-app.post('/create', async (req, res) => {
-    const { prompt } = req.body;
+function componentToHex(c) {
+    var hex = c.toString(16);
+    return hex.length == 1 ? "0" + hex : hex;
+}
 
+async function getPalette(colorCards, id) {
+    var palette = [];
+    for (let i = 0; i< colorCards.length; i++) {
+        let card = colorCards[i];
+        let colors = await query(`SELECT * FROM Color WHERE board_id=${id} AND card_num=${card.num}`);
+        colors.map((color) => {
+            const hex = '#' + componentToHex(color.r) + componentToHex(color.g) + componentToHex(color.b);
+            const name = ntc.name(hex);
+            palette.push(name[1]);
+        });
+    }
+    return palette;
+}
+
+app.post('/board/:id/generate', passport.authenticate('jwt', { session: false }), async (req, res) => {
+    const user = req.user;
+    const {id} = req.params;
+
+    // check that board with id exists
     try {
+        const result = await query(`SELECT * FROM Board WHERE id=${id}`);
+        if (result.length == 0) {
+            res.json({ success: false, error: { code: '404', msg: `Board ${id} could not be found.` } });
+            return;
+        }
+    } catch (err) {
+        res.json({ success: false, error: { code: '400', msg: err.code } });
+        return;
+    }
+
+    // generate prompt from these cards
+    var p = ['art'];
+    
+    // get color cards from this board
+    try {
+        const colorCards = await query(`SELECT * FROM Card WHERE board_id=${id} AND type='color'`);
+        console.log('colorCards: ', colorCards);
+        if (colorCards.length > 0) {
+            p.push('with color');
+
+            // get palette of colors for this board
+            const palette = await getPalette(colorCards, id);
+
+            // remove duplicates
+            const noDupPalette = [...new Set(palette)];
+            console.log('noDupPalette: ', noDupPalette);
+
+            // push color to prompt
+            noDupPalette.forEach((c, ) => {
+                p.push(`${c},`)
+            });
+        }
+    } catch (err) {
+        res.json({ success: false, error: { code: '400', msg: err.code } });
+        return;
+    }
+
+    // get style cards from this board
+    try {
+        const styleCards = await query(`SELECT * FROM Card WHERE board_id=${id} AND type='style'`);
+        console.log('styleCards: ', styleCards);
+
+        if (styleCards.length > 0) {
+            p.push('with style');
+            styleCards.forEach((c, ) => {
+                p.push(`${c.desc_text},`);
+            });
+        }
+    } catch (err) {
+        res.json({ success: false, error: { code: '400', msg: err.code } });
+        return;
+    }
+
+    // get object cards from this board
+    try {
+        const objectCards = await query(`SELECT * FROM Card WHERE board_id=${id} AND type='object'`);
+        console.log('objectCards: ', objectCards);
+
+        if (objectCards.length > 0) {
+            p.push('with ');
+            objectCards.forEach((c, ) => {
+                p.push(`${c.desc_text},`);
+            });
+        }
+    } catch (err) {
+        res.json({ success: false, error: { code: '400', msg: err.code } });
+        return;
+    }
+
+    if (p.length < 2) {
+        res.json({ success: false, error: { code: '404', msg: 'Cannot generate inspo for empty board.' } });
+        return;
+    }
+
+    const prompt = p.join(' ');
+    console.log('prompt: ', prompt);
+
+    // pass through dall*e
+    try {
+        console.log('here');
         const response = await openai.createImage({
             prompt: prompt,
             n: 1,
             size: '256x256',
         });
 
+        console.log(response);
+
         image_url = response.data.data[0].url;
+        console.log(image_url);
+        res.json({ success: true, prompt: prompt, url: image_url });
+        return;
     } catch (err) {
         res.json({ success: false, error: { code: '400', msg: `${err.code}` } });
         return;

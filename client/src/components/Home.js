@@ -91,22 +91,6 @@ const Home = () => {
 
           <Button colorScheme='blackAlpha' variant='outline' color='#FFA800' backgroundColor='#00000033' _hover={{ backgroundColor: '#ffaa001c' }} onClick={onOpen}>Create Mood Board</Button>
 
-          <Modal isOpen={isOpen} onClose={onClose}>
-            <ModalOverlay />
-            <ModalContent>
-              <ModalHeader>Create Mood Board</ModalHeader>
-              <ModalCloseButton />
-              <ModalBody>
-                <Input style={inputStyle} variant='flushed' focusBorderColor='#823C40' size='lg' placeholder='Title'
-                  onChange={(e) => setTitle(e.target.value)}
-                />
-              </ModalBody>
-              <ModalFooter>
-                <Button colorScheme='blackAlpha' variant='outline' letterSpacing={1.5} mr={3} onClick={onClose}>Close</Button>
-                <Button colorScheme='blackAlpha' variant='outline' letterSpacing={1.5} color='#FFA800' backgroundColor='#00000033' _hover={{ backgroundColor: '#ffaa001c' }} onClick={onCreate}>Create</Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
         </Box>
       </Flex>
     </Box>
