@@ -752,24 +752,16 @@ app.post('/board/:id/generate', passport.authenticate('jwt', { session: false })
 
     // generate prompt from these cards
     var p = ['art'];
-    
-    // get color cards from this board
+
+    // get object cards from this board
     try {
-        const colorCards = await query(`SELECT * FROM Card WHERE board_id=${id} AND type='color'`);
-        console.log('colorCards: ', colorCards);
-        if (colorCards.length > 0) {
-            p.push('with color');
+        const objectCards = await query(`SELECT * FROM Card WHERE board_id=${id} AND type='object'`);
+        console.log('objectCards: ', objectCards);
 
-            // get palette of colors for this board
-            const palette = await getPalette(colorCards, id);
-
-            // remove duplicates
-            const noDupPalette = [...new Set(palette)];
-            console.log('noDupPalette: ', noDupPalette);
-
-            // push color to prompt
-            noDupPalette.forEach((c, ) => {
-                p.push(`${c},`)
+        if (objectCards.length > 0) {
+            p.push('with ');
+            objectCards.forEach((c, ) => {
+                p.push(`${c.desc_text},`);
             });
         }
     } catch (err) {
@@ -792,23 +784,31 @@ app.post('/board/:id/generate', passport.authenticate('jwt', { session: false })
         res.json({ success: false, error: { code: '400', msg: err.code } });
         return;
     }
-
-    // get object cards from this board
+    
+    // get color cards from this board
     try {
-        const objectCards = await query(`SELECT * FROM Card WHERE board_id=${id} AND type='object'`);
-        console.log('objectCards: ', objectCards);
+        const colorCards = await query(`SELECT * FROM Card WHERE board_id=${id} AND type='color'`);
+        console.log('colorCards: ', colorCards);
+        if (colorCards.length > 0) {
+            p.push('with color');
 
-        if (objectCards.length > 0) {
-            p.push('with ');
-            objectCards.forEach((c, ) => {
-                p.push(`${c.desc_text},`);
+            // get palette of colors for this board
+            const palette = await getPalette(colorCards, id);
+
+            // remove duplicates
+            const noDupPalette = [...new Set(palette)];
+            console.log('noDupPalette: ', noDupPalette);
+
+            // push color to prompt
+            noDupPalette.forEach((c, ) => {
+                p.push(`color ${c},`)
             });
         }
     } catch (err) {
         res.json({ success: false, error: { code: '400', msg: err.code } });
         return;
     }
-
+    
     if (p.length < 2) {
         res.json({ success: false, error: { code: '404', msg: 'Cannot generate inspo for empty board.' } });
         return;
@@ -819,17 +819,13 @@ app.post('/board/:id/generate', passport.authenticate('jwt', { session: false })
 
     // pass through dall*e
     try {
-        console.log('here');
         const response = await openai.createImage({
             prompt: prompt,
             n: 1,
             size: '256x256',
         });
 
-        console.log(response);
-
         image_url = response.data.data[0].url;
-        console.log(image_url);
         res.json({ success: true, prompt: prompt, url: image_url });
         return;
     } catch (err) {

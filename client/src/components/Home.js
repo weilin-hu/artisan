@@ -61,38 +61,6 @@ const Home = () => {
   return (
     <Box className='background' bgColor='#0E0F15'>
       <NavBar />
-      <Flex className='drawer'>
-        <Box>
-          <Formik onSubmit={(e) => { console.log('onSubmit: ', e) }}>
-            <Form>
-              <Input style={inputStyle} type='file' accept='image/*' variant='flushed' focusBorderColor='#823C40' size='lg'
-                onChange={onFileChange}
-              />
-
-              <Button
-                colorScheme='blackAlpha'
-                variant='outline'
-                my={4}
-                size={'lg'}
-                letterSpacing={1.5}
-                fontWeight={'medium'}
-                color='#FFA800'
-                backgroundColor='#00000033'
-                _hover={{ backgroundColor: '#ffaa001c' }}
-                onClick={upload}
-              >
-                Post
-              </Button>
-
-              <Image src={url} alt='pic' />
-            </Form>
-          </Formik>
-
-
-          <Button colorScheme='blackAlpha' variant='outline' color='#FFA800' backgroundColor='#00000033' _hover={{ backgroundColor: '#ffaa001c' }} onClick={onOpen}>Create Mood Board</Button>
-
-        </Box>
-      </Flex>
     </Box>
   );
 };

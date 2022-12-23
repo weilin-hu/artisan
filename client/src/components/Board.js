@@ -14,6 +14,7 @@ import {
   ModalContent,
   ModalCloseButton,
   ModalBody,
+  Image,
   Input,
   ModalHeader,
   ModalFooter,
@@ -47,6 +48,8 @@ const Board = () => {
     const [type, setType] = useState('color');
     const [desc, setDesc] = useState('');
     const [errMsg, setErrMsg] = useState('');
+
+    const [inspo, setInspo] = useState(null);
 
     useEffect(() => {
         const fetchCardsAndBoard = async () => {
@@ -98,10 +101,13 @@ const Board = () => {
         e.preventDefault();
         console.log("generate!");
         const resp = await postAuthFetch(`http://localhost:8080/board/${id}/generate`);
+        console.log(resp);
         if (resp.success) {
             console.log(resp);
             console.log(resp.url);
             console.log(prompt);
+            
+            setInspo(resp.url);
         }
     }
 
@@ -279,6 +285,8 @@ const Board = () => {
                         rounded={'2px'}
                         w={'25%'}
                         direction={'column'}
+                        alignContent={'center'}
+                        alignItems={'center'}
                     >
                         <Button
                             variant='outline'
@@ -290,7 +298,12 @@ const Board = () => {
                             onClick={onGenerate}
                         >
                             Generate Inspo
-                        </Button>                        
+                        </Button>
+                        <Box>
+                            {inspo && 
+                            <Image alt='ha' src={inspo}/>
+                            }
+                        </Box>
                     </Flex>
                 </Flex>
             </Flex>
